@@ -1,62 +1,154 @@
 #!/usr/bin/env bash
-# Checks the machine can host Flora before anything is installed.
-# Read-only: it never changes the system. Exit 1 means "do not continue".
+# Checks this machine can host Flora, before anything is installed or changed.
+# Read-only throughout. Exit 1 means "do not continue".
+#
+# Two severities, and they look different on purpose:
+#   [must]  blocks the install. Listed again at the end with the fix.
+#   [warn]  worth knowing, does not block.
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 load_env
 
-fail=0
-note() { warn "$*"; fail=1; }
+# Each blocker is recorded as "one-line title" + "an indented fix", so the run
+# ends with a numbered list of exactly what to do rather than a wall of output
+# the reader has to re-scan for the lines that mattered.
+declare -a BLOCKERS=()
+BLOCK_COUNT=0
+must() {
+  printf '%s[must]%s %s\n' "$_c_red" "$_c_reset" "$1" >&2
+  BLOCKERS+=("$1"$'\x1f'"$2")
+  BLOCK_COUNT=$((BLOCK_COUNT+1))
+}
 
 step "Preflight"
 
 # --- commands ---------------------------------------------------------------
-for c in curl git node npm python3 openssl ss awk sed tar; do
-  if have_cmd "$c"; then ok "found $c"; else note "missing $c"; fi
+APT_MISSING=()
+for c in curl git python3 openssl awk sed tar; do
+  if have_cmd "$c"; then ok "found $c"; else
+    APT_MISSING+=("$c")
+    must "missing $c" "sudo apt install -y $c"
+  fi
 done
-have_cmd nginx   || note "missing nginx (apt install nginx)"
-have_cmd docker  || note "missing docker (Mattermost needs it)"
-have_cmd htpasswd || warn "missing htpasswd (apt install apache2-utils) -- needed for FLORA_AUTH_MODE=nginx"
-docker compose version >/dev/null 2>&1 || note "docker compose v2 plugin not available"
+have_cmd ss || warn "missing ss (apt install iproute2) -- port checks will be skipped"
 
-# --- versions ---------------------------------------------------------------
-if have_cmd node; then
-  nodemajor=$(node -p 'process.versions.node.split(".")[0]')
-  [[ "$nodemajor" -ge 20 ]] && ok "node $(node -v)" || note "node >= 20.11 required (found $(node -v))"
+# --- Node: the most common reason this script stops -------------------------
+# TokenRing and OpenCode are both Node programs, and the version in Debian and
+# Ubuntu's own repositories is usually too old, so the fix is not `apt install
+# nodejs` and saying so saves a second failed attempt.
+NODE_FIX='# Ubuntu/Debian ship an older Node; use NodeSource for 22.x:
+     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+     sudo apt install -y nodejs
+     # or, without root:  https://github.com/nvm-sh/nvm  then  nvm install 22'
+if ! have_cmd node; then
+  must "Node.js is missing -- TokenRing and OpenCode both need it (>= 20.11)" "$NODE_FIX"
+elif ! have_cmd npm; then
+  must "npm is missing (node is present) -- install the full Node distribution" "$NODE_FIX"
+else
+  nodemajor="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
+  nodeminor="$(node -p 'process.versions.node.split(".")[1]' 2>/dev/null || echo 0)"
+  if [[ "$nodemajor" -gt 20 ]] || { [[ "$nodemajor" -eq 20 ]] && [[ "$nodeminor" -ge 11 ]]; }; then
+    ok "node $(node -v), npm $(npm -v 2>/dev/null)"
+  else
+    must "node $(node -v) is too old -- TokenRing requires >= 20.11" "$NODE_FIX"
+  fi
 fi
+
+# --- python -----------------------------------------------------------------
 if have_cmd python3; then
-  pyok=$(python3 -c 'import sys; print(1 if sys.version_info>=(3,11) else 0)')
-  [[ "$pyok" == 1 ]] && ok "python $(python3 -V 2>&1 | awk '{print $2}')" || note "python >= 3.11 required"
+  if python3 -c 'import sys; sys.exit(0 if sys.version_info>=(3,11) else 1)'; then
+    ok "python $(python3 -V 2>&1 | awk '{print $2}')"
+  else
+    must "python $(python3 -V 2>&1 | awk '{print $2}') is too old -- these scripts need >= 3.11" \
+         "sudo apt install -y python3
+     (Hermes installs its own Python runtime separately; this is for Flora's scripts.)"
+  fi
+fi
+
+# --- nginx ------------------------------------------------------------------
+if have_cmd nginx; then
+  ok "found nginx"
+  if [[ -d /etc/nginx/conf.d ]]; then ok "/etc/nginx/conf.d exists"
+  else must "/etc/nginx/conf.d is missing -- this nginx has an unusual layout" \
+            "Create it and make sure nginx.conf has:  include /etc/nginx/conf.d/*.conf;"; fi
+else
+  must "nginx is missing -- it is the only way the five hostnames get routed" "sudo apt install -y nginx"
+fi
+have_cmd htpasswd || warn "no htpasswd (apt install apache2-utils) -- accounts will use an
+       SHA-512 hash from openssl instead of bcrypt, which nginx accepts fine"
+
+# --- docker: only when Mattermost is switched on ----------------------------
+if [[ "${FLORA_ENABLE_MATTERMOST:-true}" == "true" ]]; then
+  if ! have_cmd docker; then
+    must "docker is missing -- Mattermost runs in containers" \
+         "sudo apt install -y docker.io docker-compose-v2
+     Or set FLORA_ENABLE_MATTERMOST=false in flora.env to run without team chat."
+  elif ! docker compose version >/dev/null 2>&1; then
+    must "the docker compose v2 plugin is missing" \
+         "sudo apt install -y docker-compose-v2      # or docker-compose-plugin"
+  elif ! docker info >/dev/null 2>&1; then
+    must "docker is installed but not usable by $(whoami)" \
+         "sudo systemctl start docker
+     sudo usermod -aG docker $(whoami) && newgrp docker   # then re-run"
+  else
+    ok "docker $(docker version --format '{{.Server.Version}}' 2>/dev/null) with compose v2"
+  fi
+else
+  skip "Mattermost is disabled in flora.env; not checking docker"
 fi
 
 # --- ports ------------------------------------------------------------------
-for p in "$FLORA_PORT_TOKENRING tokenring" "$FLORA_PORT_HERMES hermes" \
-         "$FLORA_PORT_OPENCODE opencode" "$FLORA_PORT_MATTERMOST mattermost"; do
-  set -- $p
-  if port_free "$1"; then ok "port $1 free ($2)"
-  else
-    if ss -ltnp 2>/dev/null | grep -qE "[:.]$1 .*flora|[:.]$1 .*docker"; then
-      skip "port $1 already held by Flora ($2)"
+if have_cmd ss; then
+  for p in "$FLORA_PORT_TOKENRING tokenring TOKENRING" "$FLORA_PORT_HERMES hermes HERMES" \
+           "$FLORA_PORT_OPENCODE opencode OPENCODE" "$FLORA_PORT_MATTERMOST mattermost MATTERMOST"; do
+    set -- $p
+    if port_free "$1"; then ok "port $1 free ($2)"
     else
-      note "port $1 is in use by something else -- change FLORA_PORT_${2^^} in flora.env"
+      holder="$(ss -ltnp 2>/dev/null | grep -E "[:.]$1 " | grep -oP 'users:\(\("\K[^"]+' | head -1 || true)"
+      if [[ "$holder" == flora* || "$holder" == docker* || "$holder" == node ]]; then
+        skip "port $1 in use, looks like Flora's own $2"
+      else
+        must "port $1 ($2) is taken by ${holder:-another process}" \
+             "Either stop it, or set FLORA_PORT_$3=<free port> in flora.env"
+      fi
     fi
-  fi
-done
+  done
+fi
 
 # --- resources --------------------------------------------------------------
 free_gb=$(df -BG --output=avail "$FLORA_HOME" | tail -1 | tr -dc '0-9')
-[[ "$free_gb" -ge 15 ]] && ok "${free_gb}G free on $FLORA_HOME" \
-  || note "only ${free_gb}G free on $FLORA_HOME (15G+ recommended: Mattermost, node_modules, sessions, clones)"
+if [[ "$free_gb" -ge 15 ]]; then ok "${free_gb}G free on $FLORA_HOME"
+else must "only ${free_gb}G free on $FLORA_HOME -- 15G is the working minimum" \
+          "Free space, or move the Flora directory to a larger filesystem
+     (FLORA_HOME follows the directory; nothing to reconfigure)."; fi
 mem_mb=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
-[[ "$mem_mb" -ge 3500 ]] && ok "${mem_mb}MB RAM" || note "only ${mem_mb}MB RAM (4GB+ recommended)"
+[[ "$mem_mb" -ge 3500 ]] && ok "${mem_mb}MB RAM" \
+  || warn "${mem_mb}MB RAM -- Mattermost and Postgres want about 1GB between them;
+       4GB+ is comfortable"
 
-# --- nginx sanity -----------------------------------------------------------
-if have_cmd nginx; then
-  if [[ -d /etc/nginx/conf.d ]]; then ok "/etc/nginx/conf.d exists"
-  else note "/etc/nginx/conf.d missing -- adjust scripts/install-nginx.sh"; fi
-  if nginx -T 2>/dev/null | grep -qE "listen\s+${FLORA_HTTP_PORT}(\s|;).*default_server"; then
-    warn "another vhost owns :${FLORA_HTTP_PORT} as default_server -- fine, Flora uses name-based vhosts and will not take it over"
-  fi
+# --- existing nginx ---------------------------------------------------------
+if have_cmd nginx && nginx -T 2>/dev/null | grep -qE "listen\s+${FLORA_HTTP_PORT}(\s|;).*default_server"; then
+  warn "another vhost already owns :${FLORA_HTTP_PORT} as default_server.
+       That is fine: Flora adds name-based vhosts and never claims default_server,
+       so the site already there keeps working."
 fi
 
+# --- verdict ----------------------------------------------------------------
 echo
-if [[ "$fail" -eq 0 ]]; then ok "preflight passed"; else die "preflight found blocking problems (see above)"; fi
+if [[ "$BLOCK_COUNT" -eq 0 ]]; then
+  ok "preflight passed -- nothing is blocking the install"
+  exit 0
+fi
+
+step "$BLOCK_COUNT problem(s) to fix before installing"
+i=1
+for entry in ${BLOCKERS[@]+"${BLOCKERS[@]}"}; do
+  title="${entry%%$'\x1f'*}"
+  fix="${entry#*$'\x1f'}"
+  printf '\n  %d. %s\n' "$i" "$title"
+  printf '     %s\n' "${fix//$'\n'/$'\n'}"
+  i=$((i+1))
+done
+echo
+log "Fix those, then run this again:  bin/flora preflight"
+log "Nothing has been installed or changed."
+exit 1

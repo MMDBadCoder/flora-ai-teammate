@@ -10,6 +10,41 @@ It checks layout, permissions, stray state outside the tree, binaries, config
 validity, service health, skill drift, routing and accounts, and names
 the script that fixes whatever it finds.
 
+## Preflight says "problem(s) to fix before installing"
+
+It lists them again at the end, numbered, each with the command that fixes it.
+Only `[must]` lines block; `[warn]` lines are advisory and the run continues
+past them.
+
+The usual one is **Node.js**. `apt install nodejs` on Debian and most Ubuntu
+releases installs a version older than the 20.11 TokenRing needs, so:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v
+```
+
+Others worth knowing:
+
+| `[must]` line | What it means |
+|---|---|
+| `docker is installed but not usable by <user>` | the daemon is stopped, or you are not in the `docker` group |
+| `port 4000 (tokenring) is taken by …` | set `FLORA_PORT_TOKENRING` in `flora.env`, or stop the other process |
+| `/etc/nginx/conf.d is missing` | unusual nginx layout; create it and `include` it from `nginx.conf` |
+| `only 8G free …` | Mattermost, npm trees and clones need room |
+
+And one `[warn]` that alarms people and should not: *"another vhost already owns
+:80 as default_server"*. That is expected on a server that already hosts
+something. Flora adds name-based vhosts and never claims `default_server`, so
+the existing site keeps working.
+
+Preflight changes nothing, so it is safe to run as often as you like:
+
+```bash
+bin/flora preflight
+```
+
 ## A page does not load at all
 
 ```bash

@@ -4,15 +4,47 @@ About 30 minutes, most of it waiting for downloads.
 
 ## Before you start
 
-- A Linux server with **systemd**, **nginx**, **Docker** and **Node ≥ 20.11**.
+- A Linux server with **systemd**, and root on it.
 - **4 GB RAM** and **15 GB free disk** as a floor. Mattermost and Postgres want
   about 1 GB between them; the rest is npm trees, sessions and repository clones.
-- Root on that server, and its IP address.
+- The server's IP address.
 - At least one API key for an OpenAI-compatible provider.
 
+### Prerequisites
+
 ```bash
-sudo apt install -y nginx docker.io docker-compose-plugin git curl apache2-utils
+sudo apt update
+sudo apt install -y nginx git curl python3 openssl apache2-utils \
+                    docker.io docker-compose-v2
 ```
+
+On Debian, or with Docker's own repository, the compose package is called
+`docker-compose-plugin` instead of `docker-compose-v2`.
+
+**Node.js needs its own step.** TokenRing and OpenCode are both Node programs
+and need **≥ 20.11**, which is newer than what Debian and most Ubuntu releases
+ship. `apt install nodejs` will usually give you something too old:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v      # must print v20.11 or newer
+```
+
+Or, if you would rather not install it system-wide, use
+[nvm](https://github.com/nvm-sh/nvm) and `nvm install 22` — but then the systemd
+units need `node` on their `PATH`, so a system install is the simpler path.
+
+### Check before you commit to anything
+
+```bash
+./bin/flora preflight
+```
+
+It changes nothing. Anything it marks `[must]` blocks the install and is listed
+again at the end with the exact command that fixes it; `[warn]` is advisory and
+can be ignored. A `[warn]` about another vhost owning `:80` as `default_server`
+is expected and harmless — Flora only adds name-based vhosts.
 
 ## 1. Configure
 
