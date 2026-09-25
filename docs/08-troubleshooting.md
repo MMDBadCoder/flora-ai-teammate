@@ -45,6 +45,61 @@ Preflight changes nothing, so it is safe to run as often as you like:
 bin/flora preflight
 ```
 
+## The Hermes install failed at "gateway installation"
+
+Symptom, usually on WSL:
+
+```
+Failed to connect to bus: No medium found
+✗ Could not start the gateway service; systemd reported an error.
+✗ gateway installation failed
+```
+
+The upstream installer asked whether to install and start a *systemd user
+service* for its gateway, and there was no systemd user bus to talk to.
+
+Flora does not want that service at all — it supervises the gateway itself with
+`flora-hermes-gateway.service`. The installer is therefore run with
+`--non-interactive`, which skips the setup and gateway stages entirely. If you
+saw this, you were on a build from before that change:
+
+```bash
+git pull --rebase origin main
+bin/flora install hermes
+```
+
+The installer now also removes what the failed run left behind: the non-isolated
+checkout under `state/hermes/home/hermes-agent`, and it points out any stray
+`~/.local/bin/hermes` shim or `~/.config/systemd/user/hermes-gateway-*.service`
+unit so you can delete them.
+
+## Running on WSL
+
+Everything works, but **systemd is not on by default**, and without it nothing
+keeps the four services alive — `flora up` would report success and supervise
+nothing. Preflight now blocks on this. To enable it:
+
+```bash
+printf '[boot]\nsystemd=true\n' | sudo tee -a /etc/wsl.conf
+# then, from Windows:
+wsl --shutdown
+```
+
+Reopen the terminal and check with `systemctl is-system-running`.
+
+Without systemd you can still run the services by hand — one per terminal, or in
+tmux — using the `ExecStart` lines from `state/systemd/*.service`:
+
+```bash
+tmux new -s flora-tokenring 'cd state/tokenring/src && node server/dist/main.js'
+tmux new -s flora-hermes    'state/bin/hermes dashboard --host 127.0.0.1 --port 9119 --no-open'
+tmux new -s flora-gateway   'state/bin/hermes gateway run'
+tmux new -s flora-opencode  'state/bin/opencode web --hostname 127.0.0.1 --port 4096'
+docker compose -f state/mattermost/docker-compose.yml up -d
+```
+
+Everything else — render, sync, health, housekeeping — works unchanged.
+
 ## A page does not load at all
 
 ```bash

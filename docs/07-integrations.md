@@ -73,10 +73,17 @@ Ask her in chat:
 > Flora, clone platform/api, fix the null check in `UserService.load`, run the
 > tests, and push it for review on master.
 
-**SSH instead of HTTP.** If your Gerrit only speaks SSH, put a key at
-`state/hermes/home/.ssh/id_ed25519`, add the public half to Flora's Gerrit
-account, and change the remote URLs. Keep the key inside the Flora tree so it
-travels with the directory.
+**SSH instead of HTTP.** Flora has her own `$HOME` and therefore her own
+`~/.ssh` — she does not inherit yours. Give her a key of her own:
+
+```bash
+ssh-keygen -t ed25519 -f state/hermes/fs-home/.ssh/id_ed25519 -C "flora@flora.com" -N ""
+cat state/hermes/fs-home/.ssh/id_ed25519.pub     # add this to Flora's Gerrit account
+```
+
+OpenCode's `$HOME` is `state/opencode/home`; symlink or copy the same key there
+if she should push from that side too. Keeping the key inside the tree means it
+travels with the directory, and that revoking Flora's access is one key, not yours.
 
 ## Confluence — writing docs
 

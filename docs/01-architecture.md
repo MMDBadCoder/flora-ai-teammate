@@ -75,7 +75,8 @@ services by name.
 |---|---|---|---|
 | `shared/` | skills, instructions, MCP servers | **yes** | from git |
 | `state/hermes/home/` | sessions, memories, cron jobs, credentials | no | **no** |
-| `state/opencode/` | sessions, auth, the binary itself | no | binary yes, sessions no |
+| `state/hermes/agent/`, `tools/` | Flora's own Hermes checkout, Python runtime and tools (~2.5G) | no | yes, reinstall |
+| `state/opencode/` | sessions, auth, the binary itself (~700M) | no | binary yes, sessions no |
 | `state/tokenring/data/` | the key pool + `master.key` | no | **no** |
 | `state/mattermost/` | messages, uploads, Postgres | no | **no** |
 | `secrets/` | every credential | no | **no** |
@@ -108,11 +109,24 @@ systemd
     └── flora-housekeeping.timer  Sun 04:00     rotate, prune, vacuum
 ```
 
-`state/bin/hermes` and `state/bin/opencode` are generated wrappers. They export
-`HERMES_HOME`, `OPENCODE_CONFIG_DIR`, the `XDG_*` variables and (for OpenCode)
-`HOME` before exec'ing the real binary. **Always go through them** — a bare
-`hermes` call would read `~/.hermes` and start building a second, un-backed-up
-brain beside this one. `bin/flora hermes …` and `bin/flora shell` do this for you.
+`state/bin/hermes` and `state/bin/opencode` are generated wrappers. Each exports
+`HOME` and the `XDG_*` variables into the Flora tree before exec'ing a binary
+that also lives in the tree:
+
+| | Binary | `HOME` |
+|---|---|---|
+| Hermes | `state/hermes/agent/.hermes/bin/hermes` | `state/hermes/fs-home` |
+| OpenCode | `state/opencode/npm/node_modules/.bin/opencode` | `state/opencode/home` |
+
+Neither wrapper falls back to a binary on `PATH`. If this machine already had
+Hermes or OpenCode installed, those installs are untouched and unused — Flora
+builds her own copy of each, including Hermes' Python runtime and tools. The
+only things shared with the rest of the system are the language runtimes
+themselves (`node`, and the `git`/`curl` the installers call).
+
+**Always go through the wrappers.** A bare `hermes` is the other install, if
+there is one. `bin/flora hermes …`, `bin/flora opencode …` and `bin/flora shell`
+do it for you.
 
 ## What is deliberately not here
 

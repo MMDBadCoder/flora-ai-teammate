@@ -140,6 +140,26 @@ mem_mb=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
   || warn "${mem_mb}MB RAM -- Mattermost and Postgres want about 1GB between them;
        4GB+ is comfortable"
 
+# --- systemd / WSL ----------------------------------------------------------
+# Flora keeps four services alive with systemd. WSL only has it when it is
+# switched on explicitly, and without it `flora up` will report success while
+# supervising nothing -- so this is worth saying plainly before the install.
+if has_systemd; then
+  ok "systemd is running"
+else
+  if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
+    must "this is WSL and systemd is not running -- nothing would keep Flora's services alive" \
+         "Enable it, then restart WSL from Windows (wsl --shutdown):
+       printf '[boot]\\nsystemd=true\\n' | sudo tee -a /etc/wsl.conf
+     Without systemd you can still run the services by hand, one per terminal or
+     tmux window -- see docs/08-troubleshooting.md."
+  else
+    must "systemd is not running -- Flora uses it to supervise the four services" \
+         "Run this on a machine with systemd, or supervise the ExecStart lines in
+     state/systemd/*.service yourself (docs/08-troubleshooting.md)."
+  fi
+fi
+
 # --- existing nginx ---------------------------------------------------------
 if have_cmd nginx && nginx -T 2>/dev/null | grep -qE "listen\s+${FLORA_HTTP_PORT}(\s|;).*default_server"; then
   warn "another vhost already owns :${FLORA_HTTP_PORT} as default_server.

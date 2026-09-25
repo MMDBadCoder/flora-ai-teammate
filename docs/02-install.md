@@ -48,42 +48,42 @@ is expected and harmless — Flora only adds name-based vhosts.
 
 ## If you already run Hermes or OpenCode
 
-Nothing breaks, and nothing of yours is touched. The two installs coexist
-because Flora separates the **binary** from the **data**:
+Flora installs her own copy of each and uses nothing you already have. Your
+installs are not read, not written, not upgraded and not even looked at.
 
-| | Shared with your install | Flora's own |
+| | Yours | Flora's |
 |---|---|---|
-| Hermes binary | yes (`~/.local/bin/hermes`) | — |
-| Hermes data | no | `state/hermes/home` via `HERMES_HOME` |
-| OpenCode binary | no — its own copy in `state/opencode/npm` | |
-| OpenCode data | no | `state/opencode/**` via `HOME` and `XDG_*` |
+| Hermes binary | `~/.local/bin/hermes` | `state/hermes/agent/.hermes/bin/hermes` |
+| Hermes runtime + tools | yours | `state/hermes/tools` (its own Python, ripgrep, …) |
+| Hermes data | `~/.hermes` | `state/hermes/home` |
+| Hermes `$HOME` | yours | `state/hermes/fs-home` |
+| OpenCode binary | wherever you put it | `state/opencode/npm/…` |
+| OpenCode data | `~/.config/opencode`, `~/.local/share/opencode` | `state/opencode/**` |
 
-So your `~/.hermes` sessions, memories, skills and provider keys stay yours and
-stay invisible to Flora, and hers stay invisible to you. Running bare `hermes`
-still gets your setup; `bin/flora hermes` gets Flora's.
+The wrappers **do not fall back to `PATH`**. If Flora's copy is missing they
+fail with an error telling you to install it, rather than silently running yours
+against her data.
 
-The installer notices this and writes down what was already here, into
-`state/external-installs.txt`, so that `flora doctor` can tell a personal
-install apart from a directory that appeared later because something ran an
-agent without the wrapper.
+What genuinely is shared: `node`, `git`, `curl` and the C library — the language
+runtimes any program on the machine uses. Flora installs no npm or pip packages
+globally; both agents' dependency trees live under `state/`.
 
-Three things to watch for:
+That isolation costs disk: about **2.5 GB** for Hermes (it brings its own Python
+runtime and tool store) and **700 MB** for OpenCode.
 
-- **The Hermes binary is shared.** `FLORA_UPDATE=1 bin/flora install hermes`
-  runs `hermes update`, which upgrades the binary your personal install uses
-  too. The installer warns and pauses before doing it. Only the data is separate.
-- **Ports.** If your own OpenCode or Hermes UI is listening on 4096 or 9119,
-  preflight blocks with the pid holding it. Stop it, or move Flora:
-  `FLORA_PORT_OPENCODE=4097` in `flora.env`.
-- **Flora's Hermes shares your `$HOME`**, and therefore your `~/.ssh` keys and
-  `~/.gitconfig`. That is usually what you want for repository access, but it
-  means an SSH push from Flora authenticates as you. Commits are still
-  attributed to Flora — `gerrit.sh clone` sets `user.name`/`user.email` per
-  repository. Give her a separate key if you want the two kept apart.
+```bash
+hermes                 # still your install
+bin/flora hermes       # Flora's
+bin/flora shell        # a shell where `hermes` and `opencode` mean Flora's
+```
 
-If you would rather Flora not see your personal setup at all, run her services
-as their own Unix user: set `FLORA_USER=flora` in `flora.env` and `chown -R` the
-directory.
+Two consequences worth knowing:
+
+- **Ports.** If your own OpenCode or Hermes UI is on 4096 or 9119, preflight
+  blocks with the pid holding it. Stop it, or set `FLORA_PORT_OPENCODE=4097`.
+- **Flora has her own `~/.ssh` and `~/.gitconfig`.** She will not use your keys.
+  Give her one of her own if she needs to push over SSH — see
+  [07-integrations.md](07-integrations.md).
 
 ## 1. Configure
 

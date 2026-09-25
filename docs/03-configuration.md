@@ -98,6 +98,7 @@ both agents.
 | `FLORA_TOKENRING_REPO` | upstream | Point it at a fork or an ssh URL for a private mirror |
 | `FLORA_OPENCODE_PACKAGE` | `opencode-ai@latest` | Pin with `opencode-ai@1.4.2` |
 | `FLORA_UPDATE` | unset | `1` makes an installer actually move a working install |
+| `FLORA_HERMES_BROWSER` | `false` | Include Hermes' Playwright browser tooling (a large download) |
 
 See [04-operations.md](04-operations.md#updating) for how the three channels
 differ and why TokenRing refuses to update itself silently.
