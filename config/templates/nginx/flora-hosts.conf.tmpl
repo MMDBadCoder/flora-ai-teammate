@@ -38,6 +38,15 @@ server {
 
     include {{FLORA_HOME}}/state/nginx/auth.conf;
 
+    # Liveness for the container's healthcheck and for any external monitor.
+    # Outside the account list on purpose: it proves nginx is up, nothing more.
+    location = /nginx-health {
+        auth_basic off;
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
     location = /health.json {
         alias {{FLORA_HOME}}/state/dashboard/health.json;
         add_header Cache-Control "no-store";
