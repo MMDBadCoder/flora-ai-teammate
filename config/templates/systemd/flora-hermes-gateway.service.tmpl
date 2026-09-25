@@ -1,0 +1,24 @@
+[Unit]
+Description=Flora / Hermes gateway  --  the Mattermost bot the team chats with
+Documentation=file://{{FLORA_HOME}}/docs/07-integrations.md
+After=network-online.target flora-tokenring.service flora-mattermost.service
+Wants=network-online.target
+PartOf=flora.target
+
+[Service]
+Type=simple
+User={{FLORA_USER}}
+WorkingDirectory={{FLORA_HOME}}/workspace
+EnvironmentFile={{FLORA_HOME}}/flora.env
+EnvironmentFile=-{{FLORA_HOME}}/secrets/flora.env
+# `gateway run` stays in the foreground, which is what systemd wants; the
+# `gateway start` subcommand would daemonise behind systemd's back.
+ExecStart={{FLORA_HOME}}/state/bin/hermes gateway run
+Restart=always
+RestartSec=15
+TimeoutStopSec=30
+StandardOutput=append:{{FLORA_HOME}}/state/logs/hermes-gateway.log
+StandardError=append:{{FLORA_HOME}}/state/logs/hermes-gateway.log
+
+[Install]
+WantedBy=multi-user.target

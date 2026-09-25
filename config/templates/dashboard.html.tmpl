@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flora</title>
+<style>
+  /* One narrow column, deliberately. This is a launcher, not a control panel:
+     the job is to get someone into the right tool in one click. New services
+     are added by appending a <li> -- nothing else needs to change. */
+  :root {
+    --bg: #fbfaf9; --card: #ffffff; --line: #e6e2dd; --ink: #1c1a18;
+    --muted: #6f6862; --accent: #d9546f; --up: #3f9e62; --down: #cf4b3b; --unknown: #b9b2aa;
+    --shadow: 0 1px 2px rgba(28,26,24,.05), 0 8px 24px rgba(28,26,24,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17161a; --card: #201e24; --line: #322f38; --ink: #ece9ef;
+      --muted: #9b94a3; --accent: #e8788f; --up: #58b77c; --down: #e0645a; --unknown: #605a68;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 48px 16px 64px; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; justify-content: center;
+  }
+  main { width: 100%; max-width: 420px; }
+  header { margin-bottom: 28px; }
+  h1 {
+    font-size: 26px; margin: 0 0 4px; letter-spacing: -.02em; font-weight: 650;
+  }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13.5px; margin: 0; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  a.tile {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px;
+    padding: 14px 16px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; text-decoration: none; color: inherit; box-shadow: var(--shadow);
+    transition: transform .12s ease, border-color .12s ease;
+  }
+  a.tile:hover, a.tile:focus-visible {
+    transform: translateY(-1px); border-color: var(--accent); outline: none;
+  }
+  .name { font-weight: 600; letter-spacing: -.01em; }
+  .name kbd {
+    font: 11px ui-monospace, monospace; color: var(--muted); border: 1px solid var(--line);
+    border-radius: 4px; padding: 1px 5px; margin-left: 7px; vertical-align: 1px;
+  }
+  .what { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .state { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--unknown); flex: none; }
+  .dot.up { background: var(--up); }
+  .dot.down { background: var(--down); }
+  footer { margin-top: 26px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
+  footer code { font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Flor<span>a</span></h1>
+    <p class="sub">AI teammate &middot; team Flamingo</p>
+  </header>
+
+  <ul id="tiles">
+    <li><a class="tile" href="http://{{FLORA_HOST_HERMES}}{{FLORA_URL_PORT}}" data-svc="hermes">
+      <div><div class="name">Hermes <kbd>1</kbd></div>
+           <div class="what">Chat with Flora, sessions, skills, cron</div></div>
+      <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
+
+    <li><a class="tile" href="http://{{FLORA_HOST_OPENCODE}}{{FLORA_URL_PORT}}" data-svc="opencode">
+      <div><div class="name">OpenCode <kbd>2</kbd></div>
+           <div class="what">Coding agent in the browser</div></div>
+      <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
+
+    <li><a class="tile" href="http://{{FLORA_HOST_CHAT}}{{FLORA_URL_PORT}}" data-svc="mattermost">
+      <div><div class="name">Mattermost <kbd>3</kbd></div>
+           <div class="what">Team chat &mdash; Flora answers here</div></div>
+      <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
+
+    <li><a class="tile" href="http://{{FLORA_HOST_TOKENS}}{{FLORA_URL_PORT}}" data-svc="tokenring">
+      <div><div class="name">TokenRing <kbd>4</kbd></div>
+           <div class="what">Shared API key pool and usage</div></div>
+      <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
+  </ul>
+
+  <footer>
+    <span id="stamp">checking…</span>
+    <code>bin/flora status</code>
+  </footer>
+</main>
+
+<script>
+  // health.json is rewritten every minute by the flora-health timer. The page
+  // only reads a file, so the dashboard keeps rendering even when everything
+  // else is down -- which is exactly when someone is looking at it.
+  const LABEL = { up: "up", down: "down", unknown: "?" };
+
+  async function refresh() {
+    let data;
+    try {
+      const res = await fetch("/health.json", { cache: "no-store" });
+      data = await res.json();
+    } catch (e) {
+      document.getElementById("stamp").textContent = "no health data yet";
+      return;
+    }
+    const by = Object.fromEntries((data.services || []).map(s => [s.name, s]));
+    for (const tile of document.querySelectorAll(".tile")) {
+      const svc = by[tile.dataset.svc];
+      const dot = tile.querySelector(".dot");
+      const txt = tile.querySelector(".txt");
+      const status = svc ? svc.status : "unknown";
+      dot.className = "dot " + (status === "up" || status === "down" ? status : "");
+      txt.textContent = LABEL[status] || status;
+    }
+    const gw = by.gateway;
+    const age = Math.round((Date.now() - new Date(data.generated)) / 1000);
+    document.getElementById("stamp").textContent =
+      "checked " + (age < 90 ? age + "s ago" : Math.round(age / 60) + "m ago") +
+      (gw ? " · chat bot " + gw.status : "");
+  }
+
+  refresh();
+  setInterval(refresh, 20000);
+
+  // Number keys open a service; nothing else on the page needs a keystroke.
+  addEventListener("keydown", e => {
+    const i = parseInt(e.key, 10);
+    const tiles = document.querySelectorAll(".tile");
+    if (i >= 1 && i <= tiles.length) tiles[i - 1].click();
+  });
+</script>
+</body>
+</html>

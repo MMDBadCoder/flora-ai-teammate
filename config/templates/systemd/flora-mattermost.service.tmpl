@@ -1,0 +1,20 @@
+[Unit]
+Description=Flora / Mattermost  --  team chat, where Flora lives as a bot
+Documentation=file://{{FLORA_HOME}}/docs/07-integrations.md
+After=network-online.target docker.service
+Requires=docker.service
+PartOf=flora.target
+
+[Service]
+# The containers carry restart=unless-stopped themselves; this unit exists so
+# the whole platform starts and stops with one command.
+Type=oneshot
+RemainAfterExit=yes
+User={{FLORA_USER}}
+WorkingDirectory={{FLORA_HOME}}/state/mattermost
+ExecStart=/usr/bin/docker compose -f {{FLORA_HOME}}/state/mattermost/docker-compose.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f {{FLORA_HOME}}/state/mattermost/docker-compose.yml stop
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,31 @@
+---
+name: {{NAME}}
+description: One line saying WHEN to use this. Both agents decide whether to load the skill from this sentence alone, so name the trigger, not the topic.
+version: 1.0.0
+metadata:
+  hermes:
+    tags: [team]
+    category: team
+---
+
+# {{NAME}}
+
+## When to use
+
+Describe the situation that should pull this skill in. Be concrete: "when asked
+to push a change to Gerrit", not "for version control tasks".
+
+## Procedure
+
+1. Numbered, literal steps. Include the exact commands.
+2. Assume the agent has a shell and this repository, nothing else.
+3. Prefer the helper scripts in `scripts/integrations/` over raw API calls, so
+   that credentials stay in one place.
+
+## Pitfalls
+
+- What goes wrong in practice, and the symptom the agent will actually see.
+
+## Verification
+
+- How the agent checks it worked before reporting success.

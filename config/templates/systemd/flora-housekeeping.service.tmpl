@@ -1,0 +1,13 @@
+[Unit]
+Description=Flora / log rotation, session pruning, docker and npm cache trim
+Documentation=file://{{FLORA_HOME}}/docs/06-skills-and-sync.md
+
+[Service]
+Type=oneshot
+User={{FLORA_USER}}
+WorkingDirectory={{FLORA_HOME}}
+EnvironmentFile={{FLORA_HOME}}/flora.env
+EnvironmentFile=-{{FLORA_HOME}}/secrets/flora.env
+ExecStart={{FLORA_HOME}}/scripts/housekeeping.sh
+StandardOutput=append:{{FLORA_HOME}}/state/logs/housekeeping.log
+StandardError=append:{{FLORA_HOME}}/state/logs/housekeeping.log

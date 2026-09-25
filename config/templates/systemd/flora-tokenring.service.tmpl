@@ -1,0 +1,27 @@
+[Unit]
+Description=Flora / TokenRing  --  OpenAI-compatible key pool (every agent talks to this)
+Documentation=file://{{FLORA_HOME}}/docs/01-architecture.md
+After=network-online.target
+Wants=network-online.target
+PartOf=flora.target
+
+[Service]
+Type=simple
+User={{FLORA_USER}}
+WorkingDirectory={{FLORA_HOME}}/state/tokenring/src
+EnvironmentFile={{FLORA_HOME}}/state/tokenring/tokenring.env
+ExecStart=/usr/bin/env node server/dist/main.js
+Restart=always
+RestartSec=5
+StandardOutput=append:{{FLORA_HOME}}/state/logs/tokenring.log
+StandardError=append:{{FLORA_HOME}}/state/logs/tokenring.log
+
+# Nothing outside the Flora tree is writable by this service.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths={{FLORA_HOME}}/state
+
+[Install]
+WantedBy=multi-user.target

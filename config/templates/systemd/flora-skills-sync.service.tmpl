@@ -1,0 +1,13 @@
+[Unit]
+Description=Flora / reconcile shared skills between Hermes and OpenCode
+Documentation=file://{{FLORA_HOME}}/docs/06-skills-and-sync.md
+
+[Service]
+Type=oneshot
+User={{FLORA_USER}}
+WorkingDirectory={{FLORA_HOME}}
+EnvironmentFile={{FLORA_HOME}}/flora.env
+EnvironmentFile=-{{FLORA_HOME}}/secrets/flora.env
+ExecStart={{FLORA_HOME}}/scripts/skills-sync.sh --quiet
+StandardOutput=append:{{FLORA_HOME}}/state/logs/skills-sync.log
+StandardError=append:{{FLORA_HOME}}/state/logs/skills-sync.log

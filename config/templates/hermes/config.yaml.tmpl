@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------------
+# Hermes configuration for Flora  --  GENERATED, DO NOT EDIT BY HAND
+#
+# Source template: config/templates/hermes/config.yaml.tmpl
+# Rendered to:     state/hermes/home/config.yaml   by  bin/flora render
+#
+# Hand edits are overwritten on the next render. Change the template instead,
+# or use `hermes config set <key> <value>` for a quick experiment and then fold
+# the change back into the template so it survives.
+#
+# Secrets are NOT here: they live in state/hermes/home/.env (mode 0600),
+# rendered from secrets/flora.env.
+# ---------------------------------------------------------------------------
+
+# --- Model: everything goes through the local TokenRing pool ----------------
+providers:
+  tokenring:
+    api: http://127.0.0.1:{{FLORA_PORT_TOKENRING}}/v1
+    key_env: FLORA_TOKENRING_KEY
+    transport: openai_chat
+    # TokenRing proxies /v1/models straight through, so discovery works; set
+    # this to false and list models explicitly if your upstream blocks it.
+    discover_models: true
+
+model:
+  provider: tokenring
+  default: {{FLORA_MODEL_MAIN}}
+  api_mode: chat_completions
+
+auxiliary:
+  # Cheap model for summarising and compressing context. Same pool, smaller model.
+  compression:
+    provider: tokenring
+    model: {{FLORA_MODEL_SMALL}}
+
+# --- Skills: the shared brain ----------------------------------------------
+# state/hermes/home/skills/{{FLORA_HERMES_SKILL_CATEGORY}} is a symlink to
+# shared/skills, so anything Flora writes into that category is immediately a
+# team skill, git-tracked and visible to OpenCode. external_dirs additionally
+# makes the same tree readable if the symlink is ever removed.
+skills:
+  external_dirs:
+    - {{FLORA_HOME}}/shared/skills
+  # Scan agent-written skills for dangerous patterns before saving them.
+  guard_agent_created: true
+  # Set to true to make every skill Flora writes wait for human approval.
+  write_approval: false
+  auto_load:
+    - flora-house-rules
+
+# --- Agent behaviour --------------------------------------------------------
+agent:
+  # Flora works on real repositories; give her room to finish a task.
+  max_iterations: 300
+
+terminal:
+  backend: local
+
+memory:
+  enabled: true
+
+database:
+  journal_mode: wal

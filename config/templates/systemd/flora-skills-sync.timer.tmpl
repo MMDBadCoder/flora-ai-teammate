@@ -1,0 +1,11 @@
+[Unit]
+Description=Flora / reconcile shared skills between Hermes and OpenCode (schedule)
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+RandomizedDelaySec=15
+Unit=flora-skills-sync.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Flora / log rotation, session pruning, docker and npm cache trim (schedule)
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+RandomizedDelaySec=600
+Unit=flora-housekeeping.service
+
+[Install]
+WantedBy=timers.target

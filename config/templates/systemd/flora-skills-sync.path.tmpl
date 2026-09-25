@@ -1,0 +1,15 @@
+[Unit]
+Description=Flora / watch the skill directories and reconcile on change
+Documentation=file://{{FLORA_HOME}}/docs/06-skills-and-sync.md
+
+[Path]
+# systemd watches these directories, not the whole tree: a new or deleted skill
+# folder fires immediately, an edit inside an existing skill is picked up by the
+# five-minute timer instead. Both paths end at the same reconcile script.
+PathChanged={{FLORA_HOME}}/shared/skills
+PathChanged={{FLORA_HOME}}/state/hermes/home/skills/{{FLORA_HERMES_SKILL_CATEGORY}}
+PathChanged={{FLORA_HOME}}/state/opencode/config/skills
+Unit=flora-skills-sync.service
+
+[Install]
+WantedBy=multi-user.target

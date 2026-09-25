@@ -1,0 +1,32 @@
+{
+  "_comment": [
+    "Tool servers both agents can reach. ONE file, two dialects:",
+    "  - OpenCode gets the 'mcp' block of opencode.json, on `bin/flora render`",
+    "  - Hermes gets `hermes mcp add ...`, on `bin/flora sync`",
+    "Add a server here and run `bin/flora sync`; never edit either agent's",
+    "config directly, or they will drift.",
+    "",
+    "${VAR} is expanded from the environment at render time, so credentials stay",
+    "in secrets/flora.env and never land in a tracked file.",
+    "Set \"enabled\": false to keep a definition around without loading it."
+  ],
+
+  "servers": {
+    "atlassian": {
+      "enabled": false,
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.atlassian.com/v1/sse"],
+      "env": {},
+      "note": "Confluence and Jira through Atlassian's own MCP server. Enable it and run `bin/flora sync`, then complete the OAuth flow once with: bin/flora hermes mcp login atlassian"
+    },
+
+    "filesystem": {
+      "enabled": false,
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${FLORA_HOME}/workspace"],
+      "note": "Both agents already have shell access to workspace/, so this is usually redundant. Useful if you tighten the shell tool later."
+    }
+  }
+}

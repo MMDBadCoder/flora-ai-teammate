@@ -1,0 +1,22 @@
+[Unit]
+Description=Flora / Hermes web dashboard (chat UI, sessions, config, skills)
+Documentation=file://{{FLORA_HOME}}/docs/04-operations.md
+After=network-online.target flora-tokenring.service
+Wants=network-online.target
+PartOf=flora.target
+
+[Service]
+Type=simple
+User={{FLORA_USER}}
+WorkingDirectory={{FLORA_HOME}}/workspace
+EnvironmentFile={{FLORA_HOME}}/flora.env
+EnvironmentFile=-{{FLORA_HOME}}/secrets/flora.env
+ExecStart={{FLORA_HOME}}/state/bin/hermes dashboard --host {{FLORA_BIND_ADDR}} --port {{FLORA_PORT_HERMES}} --no-open
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+StandardOutput=append:{{FLORA_HOME}}/state/logs/hermes-dashboard.log
+StandardError=append:{{FLORA_HOME}}/state/logs/hermes-dashboard.log
+
+[Install]
+WantedBy=multi-user.target

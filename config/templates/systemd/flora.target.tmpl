@@ -1,0 +1,9 @@
+[Unit]
+# One switch for the whole platform:  systemctl start|stop flora.target
+# (bin/flora up / down wrap this.)
+Description=Flora AI teammate platform
+Wants=flora-tokenring.service flora-hermes-dashboard.service flora-hermes-gateway.service flora-opencode.service flora-mattermost.service
+After=network-online.target
+
+[Install]
+WantedBy=multi-user.target

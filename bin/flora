@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# flora -- one entry point for the whole platform.
+#
+#   bin/flora up            start everything        bin/flora doctor    diagnose
+#   bin/flora status        what is running         bin/flora logs X    tail a log
+#   bin/flora install       install/update software bin/flora sync      sync both agents
+#
+# Run `bin/flora help` for the full list.
+# ---------------------------------------------------------------------------
+set -euo pipefail
+FLORA_HOME="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+export FLORA_HOME
+source "$FLORA_HOME/scripts/lib/common.sh"
+
+S="$FLORA_HOME/scripts"
+
+usage() {
+cat <<'USAGE'
+flora -- the Flora AI teammate platform
+
+  SETUP
+    install [what]       install or update software (all|hermes|opencode|tokenring|mattermost)
+    render               regenerate every config from config/templates/
+    nginx                install the vhosts and reload nginx          (root)
+    hosts [--print]      write /etc/hosts here; print the line for clients
+    systemd              install and enable the units                 (root)
+    bootstrap            full first-time setup: all of the above, in order
+
+  RUNNING
+    up [svc...]          start (default: everything)
+    down [svc...]        stop
+    restart [svc...]     restart
+    status               health table
+    logs <svc> [-f]      tail a service log (tokenring|hermes|gateway|opencode|mattermost|nginx)
+
+  PEOPLE
+    user add <name> [pw] create or reset a UI account
+    user del <name>      remove one
+    user list            list them
+
+  THE BRAIN
+    skills list          what Flora knows
+    skills new <name>    scaffold a new shared skill
+    skills sync          reconcile both agents (also runs every 5 minutes)
+    skills lint          validate every skill against both agents' rules
+    sync                 full sync: configs, instructions, MCP servers, skills
+
+  CARE
+    doctor               full diagnostic sweep
+    housekeep            rotate logs, prune sessions, vacuum databases
+
+  DIRECT ACCESS
+    hermes <args...>     run the Hermes CLI with Flora's environment
+    opencode <args...>   run the OpenCode CLI with Flora's environment
+    tokenring key <key>  store the sk-ring-... key both agents authenticate with
+    shell                a subshell with Flora's environment loaded
+USAGE
+}
+
+# Map friendly names to systemd units.
+unit_for() {
+  case "$1" in
+    tokenring)  echo flora-tokenring.service ;;
+    hermes)     echo flora-hermes-dashboard.service ;;
+    gateway)    echo flora-hermes-gateway.service ;;
+    opencode)   echo flora-opencode.service ;;
+    mattermost) echo flora-mattermost.service ;;
+    *) die "unknown service '$1' (tokenring|hermes|gateway|opencode|mattermost)" ;;
+  esac
+}
+units_from_args() {
+  if [[ $# -eq 0 ]]; then flora_units; else for s in "$@"; do unit_for "$s"; done; fi
+}
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+
+  install)
+    load_env
+    what="${1:-all}"
+    case "$what" in
+      all)        "$S/preflight.sh"; "$S/bootstrap-secrets.sh"; "$S/render.sh"
+                  "$S/install-tokenring.sh"; "$S/install-hermes.sh"
+                  "$S/install-opencode.sh";  "$S/install-mattermost.sh"
+                  "$S/render.sh" ;;
+      hermes)     "$S/install-hermes.sh" ;;
+      opencode)   "$S/install-opencode.sh" ;;
+      tokenring)  "$S/install-tokenring.sh" ;;
+      mattermost) "$S/install-mattermost.sh" ;;
+      *) die "install what? all|hermes|opencode|tokenring|mattermost" ;;
+    esac ;;
+
+  bootstrap)
+    load_env
+    "$S/preflight.sh"
+    "$S/bootstrap-secrets.sh"
+    "$S/render.sh"
+    "$S/install-tokenring.sh"
+    "$S/install-hermes.sh"
+    "$S/install-opencode.sh"
+    "$S/install-mattermost.sh"
+    "$S/render.sh"
+    "$S/skills-sync.sh"
+    need_root
+    "$S/install-hosts.sh"
+    "$S/install-nginx.sh"
+    "$S/install-systemd.sh"
+    sd start flora.target || true
+    echo
+    step "Flora is up"
+    "$S/health.sh" || true
+    echo
+    log "Next, in this order (docs/02-install.md has the detail):"
+    log "  1. http://${FLORA_HOST_TOKENS}  -- log in, add provider keys, issue a key for Flora"
+    log "     then: bin/flora tokenring key sk-ring-..."
+    log "  2. http://${FLORA_HOST_CHAT}    -- create the admin account and the team"
+    log "     then create Flora's bot account and: bin/flora secrets edit"
+    log "  3. bin/flora doctor" ;;
+
+  render)     load_env; "$S/render.sh" ;;
+  nginx)      load_env; "$S/install-nginx.sh" ;;
+  hosts)      load_env; "$S/install-hosts.sh" "$@" ;;
+  systemd)    load_env; "$S/install-systemd.sh" ;;
+  preflight)  load_env; "$S/preflight.sh" ;;
+
+  up)
+    load_env
+    if [[ $# -eq 0 ]]; then sd start flora.target; else sd start $(units_from_args "$@"); fi
+    sleep 2; "$S/health.sh" ;;
+  down)
+    load_env
+    if [[ $# -eq 0 ]]; then sd stop flora.target $(flora_units); else sd stop $(units_from_args "$@"); fi
+    ok "stopped" ;;
+  restart)
+    load_env
+    sd restart $(units_from_args "$@")
+    sleep 2; "$S/health.sh" ;;
+  status)  load_env; "$S/health.sh" ;;
+
+  logs)
+    load_env
+    svc="${1:?usage: flora logs <tokenring|hermes|gateway|opencode|mattermost|nginx> [-f]}"; shift || true
+    case "$svc" in
+      tokenring)  f="$FLORA_STATE/logs/tokenring.log" ;;
+      hermes)     f="$FLORA_STATE/logs/hermes-dashboard.log" ;;
+      gateway)    f="$FLORA_STATE/logs/hermes-gateway.log" ;;
+      opencode)   f="$FLORA_STATE/logs/opencode.log" ;;
+      nginx)      f="$FLORA_STATE/logs/nginx-hermes.error.log" ;;
+      mattermost) exec docker compose -f "$FLORA_STATE/mattermost/docker-compose.yml" logs "$@" ;;
+      *) die "unknown service '$svc'" ;;
+    esac
+    [[ -f "$f" ]] || die "no log yet at $f"
+    if [[ "${1:-}" == "-f" ]]; then tail -f "$f"; else tail -n "${1:-200}" "$f"; fi ;;
+
+  user)    load_env; "$S/users.sh" "$@" ;;
+
+  skills)
+    load_env
+    sub="${1:-list}"; shift || true
+    case "$sub" in
+      sync) "$S/skills-sync.sh" "$@" ;;
+      lint) "$S/skills-sync.sh" --check "$@" ;;
+      list)
+        printf '%-28s %s\n' SKILL DESCRIPTION
+        for d in "$FLORA_SHARED"/skills/*/; do
+          [[ -f "$d/SKILL.md" ]] || continue
+          n="$(basename "$d")"
+          desc="$(sed -n 's/^description:[[:space:]]*//p' "$d/SKILL.md" | head -1 | cut -c1-70)"
+          printf '%-28s %s\n' "$n" "$desc"
+        done ;;
+      new)
+        name="${1:?usage: flora skills new <name>}"
+        [[ "$name" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || die "use lowercase-with-hyphens"
+        d="$FLORA_SHARED/skills/$name"
+        [[ -e "$d" ]] && die "$name already exists"
+        ensure_dir "$d"
+        sed "s/{{NAME}}/$name/g" "$FLORA_HOME/config/templates/SKILL.md.tmpl" > "$d/SKILL.md"
+        ok "created shared/skills/$name/SKILL.md -- edit it, then: bin/flora skills sync" ;;
+      *) die "flora skills {list|new|sync|lint}" ;;
+    esac ;;
+
+  sync)    load_env; "$S/agents-sync.sh" ;;
+  doctor)  load_env; "$S/doctor.sh" ;;
+  health)  load_env; "$S/health.sh" "$@" ;;
+  housekeep) load_env; "$S/housekeeping.sh" ;;
+
+  hermes)   load_env; exec "$FLORA_STATE/bin/hermes" "$@" ;;
+  opencode) load_env; exec "$FLORA_STATE/bin/opencode" "$@" ;;
+
+  tokenring)
+    load_env
+    case "${1:-}" in
+      key)
+        k="${2:?usage: flora tokenring key sk-ring-...}"
+        [[ "$k" == sk-ring-* ]] || warn "that does not look like a TokenRing key"
+        sed -i "s|^FLORA_TOKENRING_KEY=.*|FLORA_TOKENRING_KEY=$k|" "$FLORA_HOME/secrets/flora.env"
+        ok "stored; re-rendering configs"
+        "$S/render.sh" >/dev/null
+        sd restart flora-hermes-dashboard.service flora-hermes-gateway.service flora-opencode.service 2>/dev/null || true
+        ok "both agents now authenticate to TokenRing with the new key" ;;
+      password)
+        secret_get flora.env TOKENRING_ADMIN_PASSWORD ;;
+      *) die "flora tokenring {key <sk-ring-...>|password}" ;;
+    esac ;;
+
+  secrets)
+    load_env
+    case "${1:-show}" in
+      edit) "${EDITOR:-vi}" "$FLORA_HOME/secrets/flora.env"; "$S/render.sh" ;;
+      show) sed -E 's/=(.{4}).*/=\1************/' "$FLORA_HOME/secrets/flora.env" ;;
+      *) die "flora secrets {edit|show}" ;;
+    esac ;;
+
+  shell)
+    load_env
+    export PATH="$FLORA_STATE/bin:$PATH"
+    log "Flora environment loaded. 'hermes' and 'opencode' are the wrapped versions."
+    exec "${SHELL:-/bin/bash}" ;;
+
+  version) load_env; echo "flora platform $(cat "$FLORA_HOME/VERSION" 2>/dev/null || echo dev)" ;;
+  help|-h|--help) usage ;;
+  *) usage; exit 1 ;;
+esac

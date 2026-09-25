@@ -1,0 +1,13 @@
+[Unit]
+Description=Flora / write the dashboard health snapshot
+Documentation=file://{{FLORA_HOME}}/docs/06-skills-and-sync.md
+
+[Service]
+Type=oneshot
+User={{FLORA_USER}}
+WorkingDirectory={{FLORA_HOME}}
+EnvironmentFile={{FLORA_HOME}}/flora.env
+EnvironmentFile=-{{FLORA_HOME}}/secrets/flora.env
+ExecStart={{FLORA_HOME}}/scripts/health.sh --json {{FLORA_HOME}}/state/dashboard/health.json
+StandardOutput=append:{{FLORA_HOME}}/state/logs/health.log
+StandardError=append:{{FLORA_HOME}}/state/logs/health.log

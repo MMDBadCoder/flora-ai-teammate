@@ -1,0 +1,26 @@
+[Unit]
+Description=Flora / OpenCode web  --  browser coding agent
+Documentation=file://{{FLORA_HOME}}/docs/04-operations.md
+After=network-online.target flora-tokenring.service
+Wants=network-online.target
+PartOf=flora.target
+
+[Service]
+Type=simple
+User={{FLORA_USER}}
+WorkingDirectory={{FLORA_HOME}}/workspace
+EnvironmentFile={{FLORA_HOME}}/flora.env
+EnvironmentFile=-{{FLORA_HOME}}/secrets/flora.env
+# BROWSER=true stops `opencode web` trying to launch a browser on a headless box.
+Environment=BROWSER=true
+ExecStart={{FLORA_HOME}}/state/bin/opencode web --hostname {{FLORA_BIND_ADDR}} --port {{FLORA_PORT_OPENCODE}} --print-logs
+# If your opencode build has no `web` subcommand, swap the line above for:
+#   ExecStart={{FLORA_HOME}}/state/bin/opencode serve --hostname {{FLORA_BIND_ADDR}} --port {{FLORA_PORT_OPENCODE}}
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+StandardOutput=append:{{FLORA_HOME}}/state/logs/opencode.log
+StandardError=append:{{FLORA_HOME}}/state/logs/opencode.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,37 @@
+# ---------------------------------------------------------------------------
+# Flora .gitignore
+#
+# Rule of thumb: CODE, CONFIG and SKILLS are tracked. DATA and SECRETS are not.
+# Everything ignored here is either regenerable (state/) or must never leave
+# this machine (secrets/). To copy the platform elsewhere, copy the directory.
+# ---------------------------------------------------------------------------
+
+# Runtime state: agent sessions, databases, Mattermost volumes, caches.
+/state/
+
+# Secrets: API keys, bot tokens, passwords, htpasswd, ssh keys.
+# The whole directory is excluded, so nothing inside it can be re-included --
+# scripts/bootstrap-secrets.sh creates it, mode 0700, on a fresh clone.
+/secrets/
+*.key
+*.pem
+!config/templates/**/*.pem.tmpl
+
+# The live, rendered config (contains the resolved values of flora.env).
+/flora.env
+/config/rendered/
+
+# Repositories Flora clones and works in.
+/workspace/*
+!/workspace/.gitkeep
+
+# Generated dashboard health data.
+/web/dashboard/health.json
+
+# Editors / OS noise.
+*.swp
+*~
+.DS_Store
+node_modules/
+__pycache__/
+*.pyc

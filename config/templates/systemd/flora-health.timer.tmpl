@@ -1,0 +1,11 @@
+[Unit]
+Description=Flora / write the dashboard health snapshot (schedule)
+
+[Timer]
+OnCalendar=*:0/1
+Persistent=true
+RandomizedDelaySec=0
+Unit=flora-health.service
+
+[Install]
+WantedBy=timers.target
