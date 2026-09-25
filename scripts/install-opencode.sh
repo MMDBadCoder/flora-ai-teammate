@@ -8,6 +8,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 load_env
 
 step "OpenCode"
+record_external_installs
 need_cmd npm "install Node.js 20+"
 
 NPM_ROOT="$FLORA_STATE/opencode/npm"

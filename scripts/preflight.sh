@@ -19,6 +19,14 @@ must() {
   BLOCK_COUNT=$((BLOCK_COUNT+1))
 }
 
+# True only when the process really is part of this Flora install.
+proc_belongs_to_flora() {
+  local pid="$1"
+  [[ -r "/proc/$pid/cmdline" ]] && tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -qF "$FLORA_HOME" && return 0
+  [[ -r "/proc/$pid/environ" ]] && tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep -qxF "FLORA_HOME=$FLORA_HOME" && return 0
+  return 1
+}
+
 step "Preflight"
 
 # --- commands ---------------------------------------------------------------
@@ -103,12 +111,19 @@ if have_cmd ss; then
     set -- $p
     if port_free "$1"; then ok "port $1 free ($2)"
     else
-      holder="$(ss -ltnp 2>/dev/null | grep -E "[:.]$1 " | grep -oP 'users:\(\("\K[^"]+' | head -1 || true)"
-      if [[ "$holder" == flora* || "$holder" == docker* || "$holder" == node ]]; then
-        skip "port $1 in use, looks like Flora's own $2"
+      line="$(ss -ltnp 2>/dev/null | grep -E "[:.]$1 " | head -1 || true)"
+      holder="$(grep -oP 'users:\(\("\K[^"]+' <<< "$line" | head -1 || true)"
+      pid="$(grep -oP 'pid=\K[0-9]+' <<< "$line" | head -1 || true)"
+      # "a node process" is not evidence: a personal OpenCode is also node, and
+      # at preflight time Flora may not be installed at all. Only a process that
+      # actually references FLORA_HOME counts as ours.
+      if [[ -n "$pid" ]] && proc_belongs_to_flora "$pid"; then
+        skip "port $1 in use by Flora's own $2 (pid $pid)"
       else
-        must "port $1 ($2) is taken by ${holder:-another process}" \
-             "Either stop it, or set FLORA_PORT_$3=<free port> in flora.env"
+        must "port $1 ($2) is taken by ${holder:-another process}${pid:+ (pid $pid)}" \
+             "If that is your own $2, stop it, or give Flora a different port:
+       FLORA_PORT_$3=<free port>   in flora.env
+     Identify it with:  ss -ltnp | grep :$1"
       fi
     fi
   done

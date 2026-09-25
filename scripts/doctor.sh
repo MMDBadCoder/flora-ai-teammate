@@ -18,15 +18,25 @@ if [[ -f "$FLORA_HOME/secrets/flora.env" ]]; then
 fi
 
 step "2. Nothing escaped the directory"
-# The whole point of the layout: no agent state outside FLORA_HOME.
-for stray in "$HOME/.hermes" "$HOME/.config/opencode" "$HOME/.local/share/opencode"; do
-  if [[ -e "$stray" ]] && [[ "$(readlink -f "$stray")" != "$FLORA_HOME"* ]]; then
-    bad "$stray exists outside the Flora tree -- something ran the agent without the wrapper;
-       move it in, or delete it if it is empty:  ls -la $stray"
+# Flora's own state must all be under FLORA_HOME. Agent directories that were
+# already on this machine before Flora was installed are recorded in
+# state/external-installs.txt and are left alone -- they belong to whoever was
+# using Hermes or OpenCode here first.
+while IFS= read -r stray; do
+  if [[ ! -e "$stray" ]]; then
+    ok "nothing at $stray"
+  elif [[ "$(readlink -f "$stray")" == "$FLORA_HOME"* ]]; then
+    ok "$stray points inside the Flora tree"
+  elif is_external_known "$stray"; then
+    skip "$stray is a pre-existing personal install; not Flora's"
   else
-    ok "no stray state at $stray"
+    warn "$stray appeared outside the Flora tree.
+       Either something ran the agent without the wrapper (use bin/flora hermes /
+       bin/flora opencode, or bin/flora shell), or it predates Flora and was
+       never recorded. If it is yours and not Flora's, say so once with:
+         echo '$stray' >> $FLORA_HOME/$EXTERNAL_LIST_REL"
   fi
-done
+done < <(external_paths)
 
 step "3. Binaries"
 [[ -x "$FLORA_STATE/bin/hermes" ]] && ok "hermes wrapper" || bad "missing state/bin/hermes (run: bin/flora render)"

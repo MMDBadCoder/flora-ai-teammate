@@ -214,6 +214,46 @@ secret_get() {
   sed -n "s/^${key}=//p" "$file" | tail -1
 }
 
+# --- pre-existing installs -------------------------------------------------
+# Plenty of people already run Hermes or OpenCode for themselves before Flora
+# turns up. Their ~/.hermes and ~/.config/opencode are none of Flora's business,
+# but `doctor` also has to be able to spot a NEW directory appearing there,
+# which means something ran an agent without the wrapper and started a second,
+# invisible brain. The difference is only knowable if it is written down before
+# Flora installs anything, which is what this file is.
+EXTERNAL_LIST_REL="state/external-installs.txt"
+
+external_paths() {
+  printf '%s\n' "$HOME/.hermes" "$HOME/.config/opencode" "$HOME/.local/share/opencode" \
+                 "$HOME/.config/hermes" "$HOME/.claude/skills"
+}
+
+# Call before installing. Records what already exists; never overwrites.
+record_external_installs() {
+  local f="$FLORA_HOME/$EXTERNAL_LIST_REL" p found=0
+  [[ -f "$f" ]] && { skip "pre-existing installs already recorded"; return 0; }
+  ensure_dir "$(dirname "$f")"
+  : > "$f"
+  while IFS= read -r p; do
+    if [[ -e "$p" ]] && [[ "$(readlink -f "$p")" != "$FLORA_HOME"* ]]; then
+      printf '%s\n' "$p" >> "$f"
+      found=$((found+1))
+    fi
+  done < <(external_paths)
+  if [[ "$found" -gt 0 ]]; then
+    ok "noted $found pre-existing agent director$([[ $found -eq 1 ]] && echo y || echo ies) outside Flora"
+    sed 's/^/       /' "$f"
+    log "Flora will not read, write or upgrade those. Its own state lives in state/."
+  else
+    skip "no pre-existing Hermes or OpenCode state outside Flora"
+  fi
+}
+
+is_external_known() {
+  local f="$FLORA_HOME/$EXTERNAL_LIST_REL"
+  [[ -f "$f" ]] && grep -qxF "$1" "$f"
+}
+
 # --- misc ------------------------------------------------------------------
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1 ($2)"; }
 have_cmd() { command -v "$1" >/dev/null 2>&1; }

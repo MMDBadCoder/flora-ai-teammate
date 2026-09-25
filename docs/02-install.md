@@ -46,6 +46,45 @@ again at the end with the exact command that fixes it; `[warn]` is advisory and
 can be ignored. A `[warn]` about another vhost owning `:80` as `default_server`
 is expected and harmless — Flora only adds name-based vhosts.
 
+## If you already run Hermes or OpenCode
+
+Nothing breaks, and nothing of yours is touched. The two installs coexist
+because Flora separates the **binary** from the **data**:
+
+| | Shared with your install | Flora's own |
+|---|---|---|
+| Hermes binary | yes (`~/.local/bin/hermes`) | — |
+| Hermes data | no | `state/hermes/home` via `HERMES_HOME` |
+| OpenCode binary | no — its own copy in `state/opencode/npm` | |
+| OpenCode data | no | `state/opencode/**` via `HOME` and `XDG_*` |
+
+So your `~/.hermes` sessions, memories, skills and provider keys stay yours and
+stay invisible to Flora, and hers stay invisible to you. Running bare `hermes`
+still gets your setup; `bin/flora hermes` gets Flora's.
+
+The installer notices this and writes down what was already here, into
+`state/external-installs.txt`, so that `flora doctor` can tell a personal
+install apart from a directory that appeared later because something ran an
+agent without the wrapper.
+
+Three things to watch for:
+
+- **The Hermes binary is shared.** `FLORA_UPDATE=1 bin/flora install hermes`
+  runs `hermes update`, which upgrades the binary your personal install uses
+  too. The installer warns and pauses before doing it. Only the data is separate.
+- **Ports.** If your own OpenCode or Hermes UI is listening on 4096 or 9119,
+  preflight blocks with the pid holding it. Stop it, or move Flora:
+  `FLORA_PORT_OPENCODE=4097` in `flora.env`.
+- **Flora's Hermes shares your `$HOME`**, and therefore your `~/.ssh` keys and
+  `~/.gitconfig`. That is usually what you want for repository access, but it
+  means an SSH push from Flora authenticates as you. Commits are still
+  attributed to Flora — `gerrit.sh clone` sets `user.name`/`user.email` per
+  repository. Give her a separate key if you want the two kept apart.
+
+If you would rather Flora not see your personal setup at all, run her services
+as their own Unix user: set `FLORA_USER=flora` in `flora.env` and `chown -R` the
+directory.
+
 ## 1. Configure
 
 ```bash

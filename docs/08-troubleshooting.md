@@ -125,16 +125,29 @@ ls -la state/opencode/config/skills/ | head
 If one of them has a real directory where a symlink belongs, the reconciler says
 so and refuses to guess. Move it aside and re-run.
 
-## Something wrote outside the directory
+## "X appeared outside the Flora tree"
 
 ```bash
 bin/flora doctor          # section 2 checks this
-ls -la ~/.hermes ~/.config/opencode ~/.local/share/opencode 2>/dev/null
 ```
 
-Cause: something ran `hermes` or `opencode` directly instead of through the
-wrapper. Merge the stray state back in (or delete it if it is empty) and use
-`bin/flora hermes …` / `bin/flora shell` from then on.
+Two different situations, and doctor tells them apart using
+`state/external-installs.txt`, written when Flora was first installed:
+
+- **It was there before Flora.** Reported as `[same] … pre-existing personal
+  install`. Nothing to do; Flora never reads or writes it.
+- **It appeared afterwards.** Reported as `[warn]`. Something ran `hermes` or
+  `opencode` directly instead of through the wrapper, and started a second,
+  invisible brain. Use `bin/flora hermes …`, `bin/flora opencode …` or
+  `bin/flora shell` instead, then merge anything worth keeping into `state/` and
+  delete the stray directory.
+
+If a directory predates Flora but was never recorded — because you installed
+Flora before this check existed — tell it once:
+
+```bash
+echo "$HOME/.hermes" >> state/external-installs.txt
+```
 
 ## The disk filled up
 

@@ -10,6 +10,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 load_env
 
 step "Hermes"
+record_external_installs
 ensure_dir "$HERMES_HOME"
 ensure_dir "$FLORA_STATE/hermes/xdg/data"
 ensure_dir "$FLORA_STATE/hermes/xdg/cache"
@@ -21,6 +22,14 @@ if [[ -x "$FLORA_STATE/bin/hermes" ]] && "$FLORA_STATE/bin/hermes" --version >/d
   ver="$("$FLORA_STATE/bin/hermes" --version 2>&1 | head -1)"
   skip "Hermes already installed ($ver)"
   if [[ "${FLORA_UPDATE:-0}" == "1" ]]; then
+    # The binary is shared with any personal Hermes on this machine -- only the
+    # data directories are separate -- so an update here updates theirs too.
+    if is_external_known "$HOME/.hermes"; then
+      warn "this machine also has a personal Hermes ($HOME/.hermes).
+       The binary is shared, so this upgrade affects that install as well.
+       Only the data is separate. Ctrl-C now if that is not what you want."
+      sleep 4
+    fi
     log "updating Hermes"
     "$FLORA_STATE/bin/hermes" update --backup || warn "hermes update failed; keeping $ver"
   fi
