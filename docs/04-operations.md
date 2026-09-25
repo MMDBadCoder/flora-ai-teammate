@@ -193,6 +193,51 @@ The shape is deliberately repetitive:
 Then `bin/flora render && sudo bin/flora nginx && sudo bin/flora systemd`, and
 one line on each teammate's `/etc/hosts`.
 
+## Uninstalling and reinstalling
+
+```bash
+sudo bin/flora uninstall            # system integration only -- DATA IS KEPT
+sudo bin/flora uninstall --purge    # also deletes state/, secrets/, workspace/
+```
+
+Plain `uninstall` removes exactly what Flora added to the machine:
+
+- stops and disables the units, deletes them from `/etc/systemd/system`
+- removes `/etc/nginx/conf.d/flora.conf` and reloads nginx
+- removes the Flora block from `/etc/hosts`
+- stops and removes the Mattermost containers
+
+It never touches the git checkout, other nginx sites, or a Hermes or OpenCode
+you installed for yourself. Your sessions, memories, skills, key pool and chat
+history stay in `state/`, so reinstalling resumes where you left off.
+
+`--purge` additionally deletes `state/`, `secrets/` and the `workspace/` clones.
+It shows you the sizes and makes you type `purge`. There is no backup tooling
+here, so anything not pushed to git or Gerrit is gone for good — in particular
+`TOKENRING_ENCRYPTION_KEY`, without which the pooled provider keys are
+unreadable.
+
+### Updating to a newer version of the platform
+
+```bash
+git pull --rebase origin main        # pull first: uninstall lives in the repo
+sudo bin/flora uninstall             # keeps your data
+sudo bin/flora bootstrap
+bin/flora doctor
+```
+
+Pull first — you want the *new* uninstall script, and `bootstrap` is idempotent,
+so it reuses everything already installed and only fixes what changed.
+
+For a genuinely clean slate:
+
+```bash
+git pull --rebase origin main
+sudo bin/flora uninstall --purge
+cp flora.env.example flora.env && $EDITOR flora.env
+sudo bin/flora bootstrap
+```
+
 ## Moving or copying the platform
 
 There is no backup tooling here by design — the layout is the backup story.

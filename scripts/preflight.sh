@@ -106,8 +106,18 @@ fi
 
 # --- ports ------------------------------------------------------------------
 if have_cmd ss; then
-  for p in "$FLORA_PORT_TOKENRING tokenring TOKENRING" "$FLORA_PORT_HERMES hermes HERMES" \
-           "$FLORA_PORT_OPENCODE opencode OPENCODE" "$FLORA_PORT_MATTERMOST mattermost MATTERMOST"; do
+  checks=("$FLORA_PORT_TOKENRING tokenring PORT_TOKENRING" "$FLORA_PORT_HERMES hermes PORT_HERMES"
+          "$FLORA_PORT_OPENCODE opencode PORT_OPENCODE" "$FLORA_PORT_MATTERMOST mattermost PORT_MATTERMOST")
+  if [[ "${FLORA_ROUTING:-ports}" == "ports" ]]; then
+    # The public ports matter more than the internal ones: they are what the
+    # team types, and a clash here is what makes a page fail to load.
+    checks+=("$FLORA_PUBLIC_DASHBOARD dashboard PUBLIC_DASHBOARD"
+             "$FLORA_PUBLIC_HERMES hermes-public PUBLIC_HERMES"
+             "$FLORA_PUBLIC_OPENCODE opencode-public PUBLIC_OPENCODE"
+             "$FLORA_PUBLIC_CHAT chat-public PUBLIC_CHAT"
+             "$FLORA_PUBLIC_TOKENS tokens-public PUBLIC_TOKENS")
+  fi
+  for p in "${checks[@]}"; do
     set -- $p
     if port_free "$1"; then ok "port $1 free ($2)"
     else
@@ -122,7 +132,7 @@ if have_cmd ss; then
       else
         must "port $1 ($2) is taken by ${holder:-another process}${pid:+ (pid $pid)}" \
              "If that is your own $2, stop it, or give Flora a different port:
-       FLORA_PORT_$3=<free port>   in flora.env
+       FLORA_$3=<free port>   in flora.env
      Identify it with:  ss -ltnp | grep :$1"
       fi
     fi

@@ -92,15 +92,29 @@ cd /opt/flora
 cp flora.env.example flora.env
 ```
 
-Edit `flora.env`. Only two lines usually need changing:
+Edit `flora.env`. Usually one line:
 
 ```ini
-FLORA_IP=192.0.2.10        # what clients will connect to
-FLORA_DOMAIN=flora.com     # the suffix for all five hostnames
+FLORA_IP=192.0.2.10        # the address people will type
 ```
 
-Check the ports are free on your box (`bin/flora preflight` does this) and
-adjust `FLORA_PORT_*` if something already owns 4000, 9119, 4096 or 8065.
+That is all, because the default addressing needs no DNS:
+
+```ini
+FLORA_ROUTING=ports        # http://<ip>:<port> per service
+FLORA_PUBLIC_DASHBOARD=7080
+FLORA_PUBLIC_HERMES=7081
+FLORA_PUBLIC_OPENCODE=7082
+FLORA_PUBLIC_CHAT=7083
+FLORA_PUBLIC_TOKENS=7084
+```
+
+`bin/flora preflight` checks every one of those ports, plus the internal
+4000/9119/4096/8065, and names anything holding them.
+
+Prefer `http://hermes.flora.com` to a port number? Set `FLORA_ROUTING=hosts` and
+see [01-architecture.md](01-architecture.md#the-alternative-hostnames) — it
+works, but it needs an `/etc/hosts` line on every machine that browses it.
 
 ## 2. Bootstrap
 
@@ -128,8 +142,7 @@ At the end it starts `flora.target` and prints what is still missing.
 
 ## 3. Finish TokenRing
 
-Open **http://tokens.flora.com** (on the server: `curl` it, or add the hosts
-line to your own machine first — step 5).
+Open **http://&lt;your ip&gt;:7084** — `bin/flora creds` prints the exact link.
 
 ```bash
 bin/flora tokenring password     # the generated dashboard password
@@ -152,7 +165,7 @@ restarts them. Both now authenticate to the pool with that key.
 
 ## 4. Finish Mattermost
 
-Open **http://chat.flora.com**.
+Open **http://&lt;your ip&gt;:7083**.
 
 1. Create the first account — it becomes the **system admin**. Use the address
    in `FLORA_ADMIN_EMAIL`.
@@ -176,29 +189,24 @@ bin/flora restart gateway
 
 ## 5. Give the team access
 
-On every teammate's machine:
-
-```bash
-bin/flora hosts --print          # run this on the server to get the exact line
-```
-
-```bash
-# Linux / macOS
-sudo sh -c 'echo "192.0.2.10 flora.com hermes.flora.com opencode.flora.com chat.flora.com tokens.flora.com" >> /etc/hosts'
-
-# Windows: open Notepad as Administrator, edit
-#   C:\Windows\System32\drivers\etc\hosts
-```
-
-Then create their UI accounts:
-
 ```bash
 bin/flora user add sara          # prints a generated password, once
 bin/flora user list
+bin/flora creds                  # every login and link, in one place
 ```
 
-Send each person their password over Mattermost, and the dashboard URL:
-**http://flora.com**.
+Send each person their password and one link — the dashboard:
+
+```
+http://<your ip>:7080
+```
+
+Nothing to install or configure on their side. The dashboard lists the four
+services and links to them, rebuilding each link against whatever address they
+used to reach it, so the same page works over the LAN, a VPN or `localhost`.
+
+(If you chose `FLORA_ROUTING=hosts` instead, this is where each of them needs
+the `/etc/hosts` line from `bin/flora hosts --print`.)
 
 ## 6. Verify
 

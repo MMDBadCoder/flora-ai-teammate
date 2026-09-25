@@ -26,6 +26,7 @@ flora -- the Flora AI teammate platform
     hosts [--print]      write /etc/hosts here; print the line for clients
     systemd              install and enable the units                 (root)
     bootstrap            full first-time setup: all of the above, in order
+    uninstall [--purge]  remove the system integration; --purge deletes data too
 
   RUNNING
     up [svc...]          start (default: everything)
@@ -114,12 +115,15 @@ case "$cmd" in
     "$S/health.sh" || true
     echo
     log "Next, in this order (docs/02-install.md has the detail):"
-    log "  1. http://${FLORA_HOST_TOKENS}  -- log in, add provider keys, issue a key for Flora"
+    log "  1. $FLORA_URL_TOKENS  -- log in, add provider keys, issue a key for Flora"
     log "     then: bin/flora tokenring key sk-ring-..."
-    log "  2. http://${FLORA_HOST_CHAT}    -- create the admin account and the team"
+    log "  2. $FLORA_URL_CHAT  -- create the admin account and the team"
     log "     then create Flora's bot account and: bin/flora secrets edit"
-    log "  3. bin/flora doctor" ;;
+    log "  3. bin/flora doctor"
+    echo
+    log "Send the team: $FLORA_URL_DASHBOARD  (credentials: bin/flora creds)" ;;
 
+  uninstall)  load_env; need_root; "$S/uninstall.sh" "$@" ;;
   render)     load_env; "$S/render.sh" ;;
   nginx)      load_env; "$S/install-nginx.sh" ;;
   hosts)      load_env; "$S/install-hosts.sh" "$@" ;;

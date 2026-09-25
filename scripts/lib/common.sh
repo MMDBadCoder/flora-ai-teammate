@@ -68,6 +68,23 @@ load_env() {
   # so it is computed once here instead of in five different places.
   if [[ "${FLORA_HTTP_PORT:-80}" == "80" ]]; then export FLORA_URL_PORT=""
   else export FLORA_URL_PORT=":$FLORA_HTTP_PORT"; fi
+
+  # Every URL Flora prints or links to is derived here, so the addressing mode
+  # is decided in exactly one place instead of in each script and template.
+  if [[ "${FLORA_ROUTING:-ports}" == "hosts" ]]; then
+    export FLORA_URL_DASHBOARD="http://${FLORA_HOST_DASHBOARD}${FLORA_URL_PORT}"
+    export FLORA_URL_HERMES="http://${FLORA_HOST_HERMES}${FLORA_URL_PORT}"
+    export FLORA_URL_OPENCODE="http://${FLORA_HOST_OPENCODE}${FLORA_URL_PORT}"
+    export FLORA_URL_CHAT="http://${FLORA_HOST_CHAT}${FLORA_URL_PORT}"
+    export FLORA_URL_TOKENS="http://${FLORA_HOST_TOKENS}${FLORA_URL_PORT}"
+  else
+    local h="${FLORA_IP:-127.0.0.1}"
+    export FLORA_URL_DASHBOARD="http://${h}:${FLORA_PUBLIC_DASHBOARD}"
+    export FLORA_URL_HERMES="http://${h}:${FLORA_PUBLIC_HERMES}"
+    export FLORA_URL_OPENCODE="http://${h}:${FLORA_PUBLIC_OPENCODE}"
+    export FLORA_URL_CHAT="http://${h}:${FLORA_PUBLIC_CHAT}"
+    export FLORA_URL_TOKENS="http://${h}:${FLORA_PUBLIC_TOKENS}"
+  fi
 }
 
 # --- idempotent primitives -------------------------------------------------
@@ -142,6 +159,21 @@ ensure_block() {
   mv "$tmp" "$file"
   chmod 0644 "$file"
   ok "updated $file block '$marker' (backup: $file.flora.bak)"
+  FLORA_CHANGED=1; return 0
+}
+
+# remove_block <file> <marker>  -- the inverse of ensure_block
+remove_block() {
+  local file="$1" marker="$2" begin end tmp
+  begin="# >>> flora:$marker >>>"
+  end="# <<< flora:$marker <<<"
+  [[ -f "$file" ]] || { skip "$file does not exist"; FLORA_CHANGED=0; return 0; }
+  grep -qxF "$begin" "$file" || { skip "$file has no flora block"; FLORA_CHANGED=0; return 0; }
+  tmp="$(mktemp)"
+  awk -v b="$begin" -v e="$end" '$0==b {skip=1} !skip {print} $0==e {skip=0}' "$file" > "$tmp"
+  cp "$file" "$file.flora.bak"
+  mv "$tmp" "$file"; chmod 0644 "$file"
+  ok "removed the flora block from $file (backup: $file.flora.bak)"
   FLORA_CHANGED=1; return 0
 }
 

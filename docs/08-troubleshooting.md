@@ -125,15 +125,17 @@ Everything else — render, sync, health, housekeeping — works unchanged.
 ## A page does not load at all
 
 ```bash
-curl -I http://hermes.flora.com          # from a client
-getent hosts hermes.flora.com            # does the name resolve?
+bin/flora creds                          # the exact links
+curl -I http://<ip>:7081                 # from a client
+ss -ltn | grep -E ':70(8[0-4])'          # on the server: is nginx listening?
 ```
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Could not resolve host` | the client has no `/etc/hosts` line | `bin/flora hosts --print`, paste it on the client |
-| Connection refused | nginx is not listening on `FLORA_HTTP_PORT` | `systemctl status nginx`, `nginx -t` |
-| 404 from another site | a `default_server` vhost caught it — the `Host` header is wrong | check the spelling in `/etc/hosts` |
+| Connection refused | nginx is not listening on that port | `sudo bin/flora nginx`, then `nginx -t` |
+| Connection times out | a firewall between you and the server | open the `FLORA_PUBLIC_*` ports |
+| Port already in use at install | something else owns it | change `FLORA_PUBLIC_*` in `flora.env`, re-render, re-run `bin/flora nginx` |
+| `Could not resolve host` (hosts mode only) | the client has no `/etc/hosts` line | `bin/flora hosts --print`, paste it on the client |
 | 502 Bad Gateway | the backend is down | `bin/flora status`, then `bin/flora logs <service>` |
 | 403 on the dashboard | nginx cannot traverse into the directory | `sudo bin/flora nginx` (it fixes the `o+x` bits) |
 | Endless password prompt | wrong account, or no account file | `bin/flora user list`, `bin/flora user add <name>` |

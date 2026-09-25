@@ -52,7 +52,11 @@ render "$T/mattermost/docker-compose.yml.tmpl" "$FLORA_STATE/mattermost/docker-c
 render "$T/dashboard.html.tmpl" "$FLORA_HOME/web/dashboard/index.html" 0644
 
 # --- nginx ------------------------------------------------------------------
-render "$T/nginx/flora.conf.tmpl" "$FLORA_STATE/nginx/flora.conf" 0644
+case "${FLORA_ROUTING:-ports}" in
+  ports) render "$T/nginx/flora-ports.conf.tmpl" "$FLORA_STATE/nginx/flora.conf" 0644 ;;
+  hosts) render "$T/nginx/flora-hosts.conf.tmpl" "$FLORA_STATE/nginx/flora.conf" 0644 ;;
+  *) die "FLORA_ROUTING must be 'ports' or 'hosts' (got: $FLORA_ROUTING)" ;;
+esac
 
 case "$FLORA_AUTH_MODE" in
   nginx)

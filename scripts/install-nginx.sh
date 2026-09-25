@@ -61,7 +61,13 @@ systemctl reload nginx 2>/dev/null || nginx -s reload
 ok "nginx reloaded"
 
 echo
-log "Flora is served on port $FLORA_HTTP_PORT for these names:"
-for h in "$FLORA_HOST_DASHBOARD" "$FLORA_HOST_HERMES" "$FLORA_HOST_OPENCODE" "$FLORA_HOST_CHAT" "$FLORA_HOST_TOKENS"; do
-  printf '    http://%s%s\n' "$h" "$FLORA_URL_PORT"
-done
+log "Flora is reachable at:"
+printf '    %-12s %s\n' dashboard  "$FLORA_URL_DASHBOARD"
+printf '    %-12s %s\n' hermes     "$FLORA_URL_HERMES"
+printf '    %-12s %s\n' opencode   "$FLORA_URL_OPENCODE"
+printf '    %-12s %s\n' mattermost "$FLORA_URL_CHAT"
+printf '    %-12s %s\n' tokenring  "$FLORA_URL_TOKENS"
+if [[ "${FLORA_ROUTING:-ports}" == "ports" ]]; then
+  echo
+  log "No DNS and no /etc/hosts needed. Send the team the dashboard link."
+fi

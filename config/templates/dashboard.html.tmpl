@@ -65,22 +65,22 @@
   </header>
 
   <ul id="tiles">
-    <li><a class="tile" href="http://{{FLORA_HOST_HERMES}}{{FLORA_URL_PORT}}" data-svc="hermes">
+    <li><a class="tile" href="{{FLORA_URL_HERMES}}" data-svc="hermes" data-port="{{FLORA_PUBLIC_HERMES}}">
       <div><div class="name">Hermes <kbd>1</kbd></div>
            <div class="what">Chat with Flora, sessions, skills, cron</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
 
-    <li><a class="tile" href="http://{{FLORA_HOST_OPENCODE}}{{FLORA_URL_PORT}}" data-svc="opencode">
+    <li><a class="tile" href="{{FLORA_URL_OPENCODE}}" data-svc="opencode" data-port="{{FLORA_PUBLIC_OPENCODE}}">
       <div><div class="name">OpenCode <kbd>2</kbd></div>
            <div class="what">Coding agent in the browser</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
 
-    <li><a class="tile" href="http://{{FLORA_HOST_CHAT}}{{FLORA_URL_PORT}}" data-svc="mattermost">
+    <li><a class="tile" href="{{FLORA_URL_CHAT}}" data-svc="mattermost" data-port="{{FLORA_PUBLIC_CHAT}}">
       <div><div class="name">Mattermost <kbd>3</kbd></div>
            <div class="what">Team chat &mdash; Flora answers here</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
 
-    <li><a class="tile" href="http://{{FLORA_HOST_TOKENS}}{{FLORA_URL_PORT}}" data-svc="tokenring">
+    <li><a class="tile" href="{{FLORA_URL_TOKENS}}" data-svc="tokenring" data-port="{{FLORA_PUBLIC_TOKENS}}">
       <div><div class="name">TokenRing <kbd>4</kbd></div>
            <div class="what">Shared API key pool and usage</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
@@ -121,6 +121,16 @@
     document.getElementById("stamp").textContent =
       "checked " + (age < 90 ? age + "s ago" : Math.round(age / 60) + "m ago") +
       (gw ? " · chat bot " + gw.status : "");
+  }
+
+  // In port mode the links are rebuilt against whatever host the browser used
+  // to reach this page, so the dashboard works over the LAN IP, a VPN address
+  // or localhost without anything being configured for each of them.
+  if ("{{FLORA_ROUTING}}" === "ports") {
+    for (const tile of document.querySelectorAll(".tile")) {
+      const port = tile.dataset.port;
+      if (port) tile.href = location.protocol + "//" + location.hostname + ":" + port;
+    }
   }
 
   refresh();

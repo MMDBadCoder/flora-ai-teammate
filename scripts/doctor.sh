@@ -91,9 +91,23 @@ if have_cmd nginx; then
   nginx -t >/dev/null 2>&1 && ok "nginx config is valid" || bad "nginx -t fails"
   [[ -f /etc/nginx/conf.d/flora.conf ]] && ok "flora.conf installed" || bad "flora vhosts not installed (bin/flora nginx)"
 fi
-for h in "$FLORA_HOST_DASHBOARD" "$FLORA_HOST_HERMES" "$FLORA_HOST_OPENCODE" "$FLORA_HOST_CHAT" "$FLORA_HOST_TOKENS"; do
-  getent hosts "$h" >/dev/null && ok "$h resolves" || bad "$h does not resolve here (bin/flora hosts)"
-done
+if [[ "${FLORA_ROUTING:-ports}" == "hosts" ]]; then
+  for h in "$FLORA_HOST_DASHBOARD" "$FLORA_HOST_HERMES" "$FLORA_HOST_OPENCODE" "$FLORA_HOST_CHAT" "$FLORA_HOST_TOKENS"; do
+    getent hosts "$h" >/dev/null && ok "$h resolves" || bad "$h does not resolve here (bin/flora hosts)"
+  done
+else
+  ok "addressing by port -- no DNS or /etc/hosts involved"
+  for pair in "$FLORA_PUBLIC_DASHBOARD dashboard" "$FLORA_PUBLIC_HERMES hermes" \
+              "$FLORA_PUBLIC_OPENCODE opencode" "$FLORA_PUBLIC_CHAT mattermost" \
+              "$FLORA_PUBLIC_TOKENS tokenring"; do
+    set -- $pair
+    if ss -ltn 2>/dev/null | awk '{print $4}' | grep -qE "[:.]$1\$"; then
+      ok "nginx is listening on $1 ($2)"
+    else
+      bad "nothing is listening on $1 ($2) -- run: sudo bin/flora nginx"
+    fi
+  done
+fi
 if [[ "$FLORA_AUTH_MODE" == "nginx" ]]; then
   [[ -s "$FLORA_STATE/nginx/htpasswd" ]] && ok "$(wc -l < "$FLORA_STATE/nginx/htpasswd") UI account(s)" \
     || bad "no UI accounts (bin/flora user add <name>)"

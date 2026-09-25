@@ -26,11 +26,11 @@ unit_state() {
 
 # name|unit|url|probe-path|hostname
 SERVICES=(
-  "tokenring|flora-tokenring.service|http://127.0.0.1:${FLORA_PORT_TOKENRING}|/health|${FLORA_HOST_TOKENS}"
-  "hermes|flora-hermes-dashboard.service|http://127.0.0.1:${FLORA_PORT_HERMES}|/|${FLORA_HOST_HERMES}"
-  "opencode|flora-opencode.service|http://127.0.0.1:${FLORA_PORT_OPENCODE}|/|${FLORA_HOST_OPENCODE}"
-  "mattermost|flora-mattermost.service|http://127.0.0.1:${FLORA_PORT_MATTERMOST}|/api/v4/system/ping|${FLORA_HOST_CHAT}"
-  "gateway|flora-hermes-gateway.service|||${FLORA_HOST_CHAT}"
+  "tokenring|flora-tokenring.service|http://127.0.0.1:${FLORA_PORT_TOKENRING}|/health|${FLORA_URL_TOKENS}"
+  "hermes|flora-hermes-dashboard.service|http://127.0.0.1:${FLORA_PORT_HERMES}|/|${FLORA_URL_HERMES}"
+  "opencode|flora-opencode.service|http://127.0.0.1:${FLORA_PORT_OPENCODE}|/|${FLORA_URL_OPENCODE}"
+  "mattermost|flora-mattermost.service|http://127.0.0.1:${FLORA_PORT_MATTERMOST}|/api/v4/system/ping|${FLORA_URL_CHAT}"
+  "gateway|flora-hermes-gateway.service|||${FLORA_URL_CHAT}"
 )
 
 json_out=""
@@ -53,9 +53,9 @@ for spec in "${SERVICES[@]}"; do
     code="-"
     [[ "$state" == "active" ]] && status=up || status=down
   fi
-  rows+=$(printf '%-12s %-8s %-10s %s\n' "$name" "$status" "$state" "http://${host}${FLORA_URL_PORT}")$'\n'
+  rows+=$(printf '%-12s %-8s %-10s %s\n' "$name" "$status" "$state" "$host")$'\n'
   entries+="$(printf '{"name":"%s","status":"%s","unit":"%s","systemd":"%s","http":"%s","url":"http://%s"}' \
-      "$name" "$status" "$unit" "$state" "$code" "${host}${FLORA_URL_PORT}"),"
+      "$name" "$status" "$unit" "$state" "$code" "$host"),"
 done
 
 if [[ -n "$json_out" ]]; then

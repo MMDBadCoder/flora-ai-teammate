@@ -23,9 +23,9 @@ that is worth knowing before you hand out passwords.
 
 | Surface | Auth | Accounts live in | Admin |
 |---|---|---|---|
-| Dashboard, Hermes, OpenCode | HTTP basic, via nginx | `state/nginx/htpasswd` | whoever you name in `FLORA_ADMIN_USER` |
-| Mattermost | real accounts, sessions, optional MFA | Mattermost's own database | the first account created |
-| TokenRing | one shared dashboard password | its SQLite database | anyone with the password |
+| Dashboard `:7080`, Hermes `:7081`, OpenCode `:7082` | HTTP basic, via nginx | `state/nginx/htpasswd` | whoever you name in `FLORA_ADMIN_USER` |
+| Mattermost `:7083` | real accounts, sessions, optional MFA | Mattermost's own database | the first account created |
+| TokenRing `:7084` | one shared dashboard password | its SQLite database | anyone with the password |
 
 ## The agent UIs
 

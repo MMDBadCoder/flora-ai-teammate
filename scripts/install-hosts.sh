@@ -9,6 +9,16 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 load_env
 
 step "/etc/hosts"
+
+if [[ "${FLORA_ROUTING:-ports}" != "hosts" ]]; then
+  skip "FLORA_ROUTING=ports -- nothing to add to /etc/hosts, on this machine or any other"
+  log "Services are reached by address and port:"
+  for u in "$FLORA_URL_DASHBOARD" "$FLORA_URL_HERMES" "$FLORA_URL_OPENCODE" "$FLORA_URL_CHAT" "$FLORA_URL_TOKENS"; do
+    printf '    %s\n' "$u"
+  done
+  exit 0
+fi
+
 : "${FLORA_IP:?set FLORA_IP in flora.env to the address clients will reach this server on}"
 
 NAMES="$FLORA_HOST_DASHBOARD $FLORA_HOST_HERMES $FLORA_HOST_OPENCODE $FLORA_HOST_CHAT $FLORA_HOST_TOKENS"

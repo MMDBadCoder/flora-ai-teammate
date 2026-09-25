@@ -10,21 +10,24 @@ things she learns become **skills**, which are shared between her two agent
 runtimes so she never knows something in one place and not the other.
 
 ```
-                        ┌──────────────── flora.com ─────────────────┐
-   your browser ──────► │  nginx :80   name-based vhosts, one IP     │
-                        └───┬────────┬────────────┬────────────┬─────┘
-                            │        │            │            │
-                 hermes.flora.com  opencode.  chat.flora.com  tokens.flora.com
-                            │      flora.com      │            │
-                    ┌───────▼──────┐ ┌────▼─────┐ │      ┌─────▼──────┐
-                    │ Hermes       │ │ OpenCode │ │      │ TokenRing  │
-                    │ dashboard    │ │ web      │ │      │ key pool   │
-                    │ + gateway ───┼─┼──────────┼─┘      └─────▲──────┘
-                    └───────┬──────┘ └────┬─────┘                │
-                            │             │     every LLM call ──┘
-                            └──── shared/ ┘
-                              skills · instructions · MCP
+                     http://<server ip>:7080          the only link to share
+                                  │
+                  ┌───────────────▼────────────────┐
+                  │  nginx    one port per service │
+                  └──┬────────┬────────┬────────┬──┘
+                :7081│   :7082│   :7083│   :7084│
+             ┌───────▼──┐ ┌───▼────┐ ┌─▼──────┐ ┌▼──────────┐
+             │ Hermes   │ │OpenCode│ │Matter- │ │ TokenRing │
+             │ dashboard│ │  web   │ │ most   │ │ key pool  │
+             │ + gateway├─┼────────┼─┘        │ └─────▲─────┘
+             └────┬─────┘ └───┬────┘          │       │
+                  │           │    every LLM call ────┘
+                  └── shared/ ┘
+                   skills · instructions · MCP
 ```
+
+No DNS and no `/etc/hosts`: every service is reached by address and port, and
+the dashboard links to the rest.
 
 ## Start here
 
@@ -44,7 +47,7 @@ runtimes so she never knows something in one place and not the other.
 
 ```bash
 cd /opt/flora
-cp flora.env.example flora.env     # set FLORA_IP and FLORA_DOMAIN
+cp flora.env.example flora.env     # set FLORA_IP
 sudo ./bin/flora bootstrap         # installs, configures, routes, starts
 ./bin/flora doctor                 # tells you what is still missing
 ```
@@ -84,7 +87,8 @@ bin/flora status                 # is everything up?
 bin/flora logs gateway -f        # why isn't Flora answering in chat?
 bin/flora skills list            # what does she know?
 bin/flora skills new <name>      # teach her something
-bin/flora creds                  # every login, in one place
+bin/flora creds                  # every login and link, in one place
 bin/flora update                 # what is deployed vs available upstream
 bin/flora doctor                 # what is wrong?
+bin/flora uninstall              # remove the system integration (--purge wipes data)
 ```

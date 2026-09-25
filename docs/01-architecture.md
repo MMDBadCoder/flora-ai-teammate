@@ -2,12 +2,13 @@
 
 ## The four long-running services
 
-| # | Service | What it is | Port | Hostname | Supervised by |
-|---|---------|-----------|------|----------|---------------|
-| 1 | **TokenRing** | OpenAI-compatible proxy over a pool of provider API keys | 4000 | `tokens.flora.com` | `flora-tokenring.service` |
-| 2 | **Hermes** | The agent: chat UI, sessions, memory, skills, cron | 9119 | `hermes.flora.com` | `flora-hermes-dashboard.service` |
-| 3 | **OpenCode** | Browser coding agent | 4096 | `opencode.flora.com` | `flora-opencode.service` |
-| 4 | **Mattermost** | Team chat, where Flora answers as a bot | 8065 | `chat.flora.com` | `flora-mattermost.service` |
+| # | Service | What it is | You browse | Backend | Supervised by |
+|---|---------|-----------|------------|---------|---------------|
+| — | **Dashboard** | a launcher listing the four | `:7080` | static | nginx |
+| 1 | **TokenRing** | OpenAI-compatible proxy over a pool of provider API keys | `:7084` | 127.0.0.1:4000 | `flora-tokenring.service` |
+| 2 | **Hermes** | The agent: chat UI, sessions, memory, skills, cron | `:7081` | 127.0.0.1:9119 | `flora-hermes-dashboard.service` |
+| 3 | **OpenCode** | Browser coding agent | `:7082` | 127.0.0.1:4096 | `flora-opencode.service` |
+| 4 | **Mattermost** | Team chat, where Flora answers as a bot | `:7083` | 127.0.0.1:8065 | `flora-mattermost.service` |
 
 Plus two supporting processes:
 
@@ -52,22 +53,44 @@ They are kept interchangeable on the four things that matter — skills,
 instructions, tool servers, model — so the answer does not depend on which tab
 you opened. See [06-skills-and-sync.md](06-skills-and-sync.md).
 
-## Routing without DNS
+## Addressing
 
-`/etc/hosts` on every client maps five names to the server's IP. nginx then
-routes by `Host:` header — classic name-based virtual hosting. No DNS, no
-certificates, no coordination with anyone.
+Default (`FLORA_ROUTING=ports`): **nginx listens on one port per service**, and
+you reach each at `http://<server ip>:<port>`.
+
+```
+http://192.0.2.10:7080     dashboard — the only link anyone needs
+http://192.0.2.10:7081     Hermes
+http://192.0.2.10:7082     OpenCode
+http://192.0.2.10:7083     Mattermost
+http://192.0.2.10:7084     TokenRing
+```
+
+No DNS, no `/etc/hosts`, nothing for a teammate to configure — they open the
+dashboard and click. It also works over `localhost`, a VPN address or a LAN IP
+with no extra configuration, because the dashboard rebuilds its links against
+whatever host the browser used to reach it.
+
+The backends stay on `127.0.0.1`. nginx is the only thing listening publicly,
+which is what lets one account list guard both agent UIs — and both of them can
+run shell commands on this machine.
+
+Ports are set by `FLORA_PUBLIC_*` in `flora.env`; change any that clash.
+
+### The alternative: hostnames
+
+`FLORA_ROUTING=hosts` switches to name-based virtual hosts on a single port
+(`http://hermes.flora.com`). It is tidier to read and it needs a line in
+`/etc/hosts` **on every machine that browses it**:
 
 ```
 192.0.2.10  flora.com hermes.flora.com opencode.flora.com chat.flora.com tokens.flora.com
 ```
 
-**`/etc/hosts` has no wildcards.** `*.flora.com` does not work, in any OS. Every
-name is listed explicitly, which means adding a fifth service later costs one
-line on each teammate's machine. `bin/flora hosts --print` prints the current line.
-
-On the server itself the names point at `127.0.0.1`, so Flora can reach her own
-services by name.
+Hosts files have no wildcards, so every name is listed explicitly and adding a
+service later means editing every client. `bin/flora hosts --print` gives you the
+line. Port mode exists because that coordination is rarely worth it for a team
+on one server.
 
 ## Where the data is
 
@@ -130,8 +153,8 @@ do it for you.
 
 ## What is deliberately not here
 
-- **No TLS.** Plain HTTP on an offline network. If this ever gets a public
-  address, see [09-security.md](09-security.md) first.
+- **No TLS.** Plain HTTP, addressed by IP. If this ever gets a public address,
+  see [09-security.md](09-security.md) first.
 - **No SSO.** HTTP basic auth on the agent UIs, real accounts in Mattermost and
   TokenRing. [05-accounts-and-auth.md](05-accounts-and-auth.md) explains how to
   upgrade.

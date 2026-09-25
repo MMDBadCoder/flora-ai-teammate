@@ -65,22 +65,22 @@
   </header>
 
   <ul id="tiles">
-    <li><a class="tile" href="http://hermes.flora.com" data-svc="hermes">
+    <li><a class="tile" href="http://195.248.240.141:7081" data-svc="hermes" data-port="7081">
       <div><div class="name">Hermes <kbd>1</kbd></div>
            <div class="what">Chat with Flora, sessions, skills, cron</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
 
-    <li><a class="tile" href="http://opencode.flora.com" data-svc="opencode">
+    <li><a class="tile" href="http://195.248.240.141:7082" data-svc="opencode" data-port="7082">
       <div><div class="name">OpenCode <kbd>2</kbd></div>
            <div class="what">Coding agent in the browser</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
 
-    <li><a class="tile" href="http://chat.flora.com" data-svc="mattermost">
+    <li><a class="tile" href="http://195.248.240.141:7083" data-svc="mattermost" data-port="7083">
       <div><div class="name">Mattermost <kbd>3</kbd></div>
            <div class="what">Team chat &mdash; Flora answers here</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
 
-    <li><a class="tile" href="http://tokens.flora.com" data-svc="tokenring">
+    <li><a class="tile" href="http://195.248.240.141:7084" data-svc="tokenring" data-port="7084">
       <div><div class="name">TokenRing <kbd>4</kbd></div>
            <div class="what">Shared API key pool and usage</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
@@ -121,6 +121,16 @@
     document.getElementById("stamp").textContent =
       "checked " + (age < 90 ? age + "s ago" : Math.round(age / 60) + "m ago") +
       (gw ? " · chat bot " + gw.status : "");
+  }
+
+  // In port mode the links are rebuilt against whatever host the browser used
+  // to reach this page, so the dashboard works over the LAN IP, a VPN address
+  // or localhost without anything being configured for each of them.
+  if ("ports" === "ports") {
+    for (const tile of document.querySelectorAll(".tile")) {
+      const port = tile.dataset.port;
+      if (port) tile.href = location.protocol + "//" + location.hostname + ":" + port;
+    }
   }
 
   refresh();

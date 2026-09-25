@@ -34,11 +34,21 @@ half-finished config.
 | `FLORA_TZ` | `UTC` | Mattermost and the timers use it |
 | `FLORA_USER` | `root` | The account the units run as |
 
-### Hostnames
+### Addressing
 
-`FLORA_HOST_DASHBOARD`, `_HERMES`, `_OPENCODE`, `_CHAT`, `_TOKENS`. Changing one
-means `bin/flora render && bin/flora nginx && bin/flora hosts`, **and** an edit
-to every teammate's `/etc/hosts`.
+| Variable | Default | Notes |
+|---|---|---|
+| `FLORA_ROUTING` | `ports` | `ports` = `http://<ip>:<port>`; `hosts` = name-based vhosts |
+| `FLORA_PUBLIC_DASHBOARD` | `7080` | what people type |
+| `FLORA_PUBLIC_HERMES` | `7081` | |
+| `FLORA_PUBLIC_OPENCODE` | `7082` | |
+| `FLORA_PUBLIC_CHAT` | `7083` | |
+| `FLORA_PUBLIC_TOKENS` | `7084` | |
+| `FLORA_HOST_*` | `*.flora.com` | only read when `FLORA_ROUTING=hosts` |
+| `FLORA_HTTP_PORT` | `80` | only read when `FLORA_ROUTING=hosts` |
+
+Changing a public port: `bin/flora render && sudo bin/flora nginx`. Changing a
+hostname additionally means editing every teammate's `/etc/hosts`.
 
 ### Networking
 
