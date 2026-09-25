@@ -53,6 +53,55 @@ load_env() {
     source "$s"
   done
   set +a
+  # Defaults for every key that might be missing, because a flora.env written
+  # against an older version of Flora must keep working after a pull. Without
+  # this, adding one variable to the template breaks every command in the
+  # platform with "unbound variable" for anyone who upgrades.
+  : "${FLORA_ROUTING:=ports}"
+  : "${FLORA_NGINX:=docker}"
+  : "${FLORA_PUBLIC_DASHBOARD:=7080}"
+  : "${FLORA_PUBLIC_HERMES:=7081}"
+  : "${FLORA_PUBLIC_OPENCODE:=7082}"
+  : "${FLORA_PUBLIC_CHAT:=7083}"
+  : "${FLORA_PUBLIC_TOKENS:=7084}"
+  : "${FLORA_HTTP_PORT:=80}"
+  : "${FLORA_BIND_ADDR:=127.0.0.1}"
+  : "${FLORA_AUTH_MODE:=nginx}"
+  : "${FLORA_ADMIN_USER:=admin}"
+  : "${FLORA_ADMIN_EMAIL:=admin@${FLORA_DOMAIN:-flora.local}}"
+  : "${FLORA_USER:=root}"
+  : "${FLORA_TZ:=UTC}"
+  : "${FLORA_IP:=127.0.0.1}"
+  : "${FLORA_HOST_DASHBOARD:=${FLORA_DOMAIN:-flora.local}}"
+  : "${FLORA_HOST_HERMES:=hermes.${FLORA_DOMAIN:-flora.local}}"
+  : "${FLORA_HOST_OPENCODE:=opencode.${FLORA_DOMAIN:-flora.local}}"
+  : "${FLORA_HOST_CHAT:=chat.${FLORA_DOMAIN:-flora.local}}"
+  : "${FLORA_HOST_TOKENS:=tokens.${FLORA_DOMAIN:-flora.local}}"
+  : "${FLORA_PORT_TOKENRING:=4000}"
+  : "${FLORA_PORT_HERMES:=9119}"
+  : "${FLORA_PORT_OPENCODE:=4096}"
+  : "${FLORA_PORT_MATTERMOST:=8065}"
+  : "${FLORA_MODEL_MAIN:=gpt-5.1}"
+  : "${FLORA_MODEL_SMALL:=gpt-5.1-mini}"
+  : "${FLORA_TOKENRING_UPSTREAM:=https://api.openai.com/v1}"
+  : "${FLORA_HERMES_SKILL_CATEGORY:=team}"
+  : "${FLORA_SKILLS_EXPORT_BUNDLED:=false}"
+  : "${FLORA_LOG_KEEP_DAYS:=30}"
+  : "${FLORA_SESSION_KEEP_DAYS:=90}"
+  : "${FLORA_ENABLE_TOKENRING:=true}"
+  : "${FLORA_ENABLE_HERMES:=true}"
+  : "${FLORA_ENABLE_OPENCODE:=true}"
+  : "${FLORA_ENABLE_MATTERMOST:=true}"
+  export FLORA_ROUTING FLORA_NGINX FLORA_PUBLIC_DASHBOARD FLORA_PUBLIC_HERMES \
+         FLORA_PUBLIC_OPENCODE FLORA_PUBLIC_CHAT FLORA_PUBLIC_TOKENS FLORA_HTTP_PORT \
+         FLORA_BIND_ADDR FLORA_AUTH_MODE FLORA_ADMIN_USER FLORA_ADMIN_EMAIL FLORA_USER \
+         FLORA_TZ FLORA_IP FLORA_HOST_DASHBOARD FLORA_HOST_HERMES FLORA_HOST_OPENCODE \
+         FLORA_HOST_CHAT FLORA_HOST_TOKENS FLORA_PORT_TOKENRING FLORA_PORT_HERMES \
+         FLORA_PORT_OPENCODE FLORA_PORT_MATTERMOST FLORA_MODEL_MAIN FLORA_MODEL_SMALL \
+         FLORA_TOKENRING_UPSTREAM FLORA_HERMES_SKILL_CATEGORY FLORA_SKILLS_EXPORT_BUNDLED \
+         FLORA_LOG_KEEP_DAYS FLORA_SESSION_KEEP_DAYS FLORA_ENABLE_TOKENRING \
+         FLORA_ENABLE_HERMES FLORA_ENABLE_OPENCODE FLORA_ENABLE_MATTERMOST
+
   # FLORA_HOME is defined by where these scripts live, so a stale value in
   # flora.env (after a move or a copy) can never send the platform somewhere
   # that does not exist. The detected path always wins.
@@ -68,6 +117,14 @@ load_env() {
   # so it is computed once here instead of in five different places.
   if [[ "${FLORA_HTTP_PORT:-80}" == "80" ]]; then export FLORA_URL_PORT=""
   else export FLORA_URL_PORT=":$FLORA_HTTP_PORT"; fi
+
+  # Where nginx finds the backends. A host nginx shares the loopback with them;
+  # a containerised one reaches them through the gateway address.
+  if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
+    export FLORA_UPSTREAM_HOST="host.docker.internal"
+  else
+    export FLORA_UPSTREAM_HOST="127.0.0.1"
+  fi
 
   # Every URL Flora prints or links to is derived here, so the addressing mode
   # is decided in exactly one place instead of in each script and template.

@@ -58,6 +58,11 @@ case "${FLORA_ROUTING:-ports}" in
   *) die "FLORA_ROUTING must be 'ports' or 'hosts' (got: $FLORA_ROUTING)" ;;
 esac
 
+# Flora's own nginx, when she runs one.
+if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
+  render "$T/nginx/docker-compose.yml.tmpl" "$FLORA_STATE/nginx/docker-compose.yml" 0644
+fi
+
 case "$FLORA_AUTH_MODE" in
   nginx)
     cat <<AUTH | write_if_changed "$FLORA_STATE/nginx/auth.conf"

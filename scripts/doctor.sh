@@ -63,6 +63,20 @@ else
 fi
 
 step "4. Configuration"
+# New releases add settings. Missing ones fall back to a built-in default, so
+# nothing breaks -- but it is worth knowing which knobs you have not seen.
+if [[ -f "$FLORA_HOME/flora.env" && -f "$FLORA_HOME/flora.env.example" ]]; then
+  missing="$(comm -23 \
+    <(grep -oE '^[A-Z_]+=' "$FLORA_HOME/flora.env.example" | tr -d '=' | sort -u) \
+    <(grep -oE '^[A-Z_]+=' "$FLORA_HOME/flora.env" | tr -d '=' | sort -u) || true)"
+  if [[ -n "$missing" ]]; then
+    warn "flora.env predates these settings; defaults are in use:
+$(sed 's/^/         /' <<< "$missing")
+       See docs/03-configuration.md, or copy the new blocks from flora.env.example."
+  else
+    ok "flora.env has every setting the current version knows about"
+  fi
+fi
 [[ -f "$HERMES_HOME/config.yaml" ]] && ok "hermes config.yaml" || bad "hermes config.yaml missing (bin/flora render)"
 if [[ -f "$OPENCODE_CONFIG_DIR/opencode.json" ]]; then
   python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$OPENCODE_CONFIG_DIR/opencode.json" 2>/dev/null \
