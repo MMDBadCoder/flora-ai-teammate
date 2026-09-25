@@ -90,8 +90,20 @@ both agents.
 | `FLORA_HOUSEKEEP_DOCKER` | `false` | Global Docker pruning. Leave off on a shared box |
 | `FLORA_ENABLE_*` | `true` | Per-service on/off, honoured by `install-systemd.sh` |
 
-Undocumented but honoured: `FLORA_TOKENRING_REPO`, `FLORA_TOKENRING_REF`,
-`FLORA_OPENCODE_PACKAGE`, `FLORA_SKILLS_GIT`, `FLORA_UPDATE`.
+### Versions
+
+| Variable | Default | Notes |
+|---|---|---|
+| `FLORA_TOKENRING_REF` | `main` | Branch, tag or commit SHA to build TokenRing from |
+| `FLORA_TOKENRING_REPO` | upstream | Point it at a fork or an ssh URL for a private mirror |
+| `FLORA_OPENCODE_PACKAGE` | `opencode-ai@latest` | Pin with `opencode-ai@1.4.2` |
+| `FLORA_UPDATE` | unset | `1` makes an installer actually move a working install |
+
+See [04-operations.md](04-operations.md#updating) for how the three channels
+differ and why TokenRing refuses to update itself silently.
+
+Also honoured: `FLORA_SKILLS_GIT` (set `false` to stop auto-committing skill
+changes), `FLORA_HOUSEKEEP_DOCKER`.
 
 ## secrets/flora.env
 

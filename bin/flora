@@ -47,6 +47,7 @@ flora -- the Flora AI teammate platform
     sync                 full sync: configs, instructions, MCP servers, skills
 
   CARE
+    update [--apply]     what is deployed vs available upstream
     doctor               full diagnostic sweep
     housekeep            rotate logs, prune sessions, vacuum databases
 
@@ -181,6 +182,7 @@ case "$cmd" in
     esac ;;
 
   sync)    load_env; "$S/agents-sync.sh" ;;
+  update)  load_env; "$S/update.sh" "$@" ;;
   doctor)  load_env; "$S/doctor.sh" ;;
   health)  load_env; "$S/health.sh" "$@" ;;
   housekeep) load_env; "$S/housekeeping.sh" ;;

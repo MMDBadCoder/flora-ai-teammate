@@ -86,23 +86,97 @@ branch still builds, a weekly note of which docs have gone stale.
 
 ## Updating
 
+Check first, apply second. They are separate commands because these components
+come from three different channels with three different release habits.
+
 ```bash
-FLORA_UPDATE=1 bin/flora install hermes
-FLORA_UPDATE=1 bin/flora install opencode
-bin/flora install tokenring
-bin/flora render
-bin/flora restart
-bin/flora doctor
+bin/flora update                    # report only -- changes nothing
+bin/flora update --apply            # apply everything
+bin/flora update --apply opencode   # or just one
 ```
 
-`install` without `FLORA_UPDATE=1` is a no-op when something is already present,
-so it is safe to run at any time. TokenRing always fetches, and rebuilds only if
-the checkout moved.
+```
+COMPONENT    DEPLOYED               AVAILABLE
+tokenring    3242aefe (main)        7c11b0a2               UPDATE
+hermes       0.9.4                  0.9.4                  current
+opencode     1.4.2                  1.5.0                  UPDATE
+mattermost   10.5                   10.5 (pinned)          edit the template to move
+```
 
-Upgrades are not reversible on their own. Before a big one, copy `state/` aside:
+### Where each one comes from
+
+| Component | Channel | Pinned by |
+|---|---|---|
+| **TokenRing** | a git checkout built from source | `FLORA_TOKENRING_REF` in `flora.env` |
+| **Hermes** | the upstream installer's own updater | not pinned; `hermes update` moves it |
+| **OpenCode** | the `opencode-ai` npm package | `FLORA_OPENCODE_PACKAGE` (e.g. `opencode-ai@1.4.2`) |
+| **Mattermost** | a Docker image tag | the tag in `config/templates/mattermost/docker-compose.yml.tmpl` |
+
+### TokenRing in particular
+
+It is built from source because upstream publishes no tagged releases and no
+container image — its own compose file builds locally. So `FLORA_TOKENRING_REF`
+tracks `main` by default, and it accepts a branch, a tag or a full commit SHA:
+
+```ini
+FLORA_TOKENRING_REF=main        # tip of the branch (the default today)
+FLORA_TOKENRING_REF=v1.2.0      # a tag, once upstream cuts them
+FLORA_TOKENRING_REF=3242aefe…   # an exact commit — fully reproducible
+```
+
+**Pin it as soon as there is something to pin to.** Every model call from both
+agents goes through this service; it is the last thing that should move without
+you deciding it should.
+
+`bin/flora install tokenring` never moves an existing checkout on its own. It
+reports the gap and stops:
+
+```
+[warn] A newer TokenRing is available on 'main':
+    deployed  3242aefe
+    upstream  7c11b0a2
+[flora] Nothing was changed. To review first:
+    git -C state/tokenring/src log --oneline 3242aefe..7c11b0a2
+```
+
+Applying it is `FLORA_UPDATE=1 bin/flora install tokenring`, which:
+
+1. copies `state/tokenring/data` aside as `data.pre-<sha>` — TokenRing migrates
+   its schema on boot and migrations only run forwards, so the old build may not
+   read a database the new one has touched;
+2. fetches, checks out and rebuilds;
+3. records the deployed SHA in `state/tokenring/deployed.txt`;
+4. prints the exact rollback commands, with the old SHA already filled in.
 
 ```bash
+bin/flora restart tokenring && bin/flora status
+```
+
+If the pool stops answering, the rollback it printed is two lines: reinstall the
+old SHA, move the old data directory back.
+
+### The others
+
+```bash
+FLORA_UPDATE=1 bin/flora install hermes      # runs `hermes update --backup`
+FLORA_UPDATE=1 bin/flora install opencode    # npm install opencode-ai@latest
+bin/flora render && bin/flora restart && bin/flora doctor
+```
+
+To hold OpenCode at a known-good version, set
+`FLORA_OPENCODE_PACKAGE=opencode-ai@1.4.2` in `flora.env`.
+
+Mattermost's image tag is pinned in its template on purpose — a major upgrade
+migrates the database and is not reversible. Change the tag, then
+`bin/flora render && bin/flora restart mattermost`, and read Mattermost's own
+upgrade notes for the version you are jumping to.
+
+Upgrades are not reversible on their own. Before a big one, copy the state aside:
+
+```bash
+bin/flora down
 tar czf /tmp/flora-state-$(date +%F).tar.gz state shared secrets flora.env
+bin/flora up
 ```
 
 ## Adding a fifth service

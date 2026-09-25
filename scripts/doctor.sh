@@ -35,7 +35,11 @@ step "3. Binaries"
   || bad "hermes does not run (scripts/install-hermes.sh)"
 "$FLORA_STATE/bin/opencode" --version >/dev/null 2>&1 && ok "opencode: $("$FLORA_STATE/bin/opencode" --version 2>&1 | head -1)" \
   || bad "opencode does not run (scripts/install-opencode.sh)"
-[[ -f "$FLORA_STATE/tokenring/src/server/dist/main.js" ]] && ok "tokenring built" || bad "tokenring not built (scripts/install-tokenring.sh)"
+if [[ -f "$FLORA_STATE/tokenring/src/server/dist/main.js" ]]; then
+  ok "tokenring built at $(cut -c1-8 "$FLORA_STATE/tokenring/deployed.txt" 2>/dev/null || echo unknown) (ref ${FLORA_TOKENRING_REF:-main})"
+else
+  bad "tokenring not built (scripts/install-tokenring.sh)"
+fi
 
 step "4. Configuration"
 [[ -f "$HERMES_HOME/config.yaml" ]] && ok "hermes config.yaml" || bad "hermes config.yaml missing (bin/flora render)"
