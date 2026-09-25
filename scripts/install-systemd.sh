@@ -27,6 +27,9 @@ enable_if "$FLORA_ENABLE_TOKENRING"  flora-tokenring.service
 enable_if "$FLORA_ENABLE_HERMES"     flora-hermes-dashboard.service flora-hermes-gateway.service
 enable_if "$FLORA_ENABLE_OPENCODE"   flora-opencode.service
 enable_if "$FLORA_ENABLE_MATTERMOST" flora-mattermost.service
+if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
+  enable_if true flora-nginx.service
+fi
 systemctl enable flora.target >/dev/null 2>&1 && ok "enabled flora.target"
 
 for t in $(flora_timers) flora-skills-sync.path; do

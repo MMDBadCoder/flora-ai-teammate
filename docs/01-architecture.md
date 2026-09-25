@@ -15,9 +15,13 @@ Plus two supporting processes:
 - **Hermes gateway** (`flora-hermes-gateway.service`) — the process that holds
   the Mattermost connection. Separate from the dashboard because restarting the
   UI should not drop the chat bot, and the reverse.
-- **nginx** — already on the box; Flora adds one config file to it.
+- **nginx** (`flora-nginx.service`) — by default Flora runs her own, in a
+  container, with host networking. Nothing is written to `/etc/nginx` and the
+  machine does not need nginx installed. `FLORA_NGINX=host` uses the host's
+  nginx instead, via `/etc/nginx/conf.d/flora.conf`.
 
-So: four things the team sees, **six** units to keep alive. `flora.target`
+So: four things the team sees, **seven** units to keep alive (six with a host
+nginx). `flora.target`
 groups them, which is what `bin/flora up` and `down` actually drive.
 
 ## Why TokenRing sits in the middle
@@ -76,6 +80,27 @@ which is what lets one account list guard both agent UIs — and both of them ca
 run shell commands on this machine.
 
 Ports are set by `FLORA_PUBLIC_*` in `flora.env`; change any that clash.
+
+### Whose nginx
+
+`FLORA_NGINX=docker` (default) runs `nginx:1.27-alpine` from
+`state/nginx/docker-compose.yml`. It uses **host networking**, for a specific
+reason: the backends listen on `127.0.0.1`, and a bridge-networked container
+cannot reach a host loopback socket — the alternative would be binding the
+backends to `0.0.0.0`, which is exactly what this design avoids. Host networking
+also means the generated `flora.conf` is byte-identical under either runtime:
+one file, two ways to serve it.
+
+Two consequences worth knowing:
+
+- The image ships its own `default.conf` on port 80. Under host networking that
+  collides with anything already on `:80`, so the compose file masks it with
+  `/dev/null`.
+- Only four paths are mounted, read-only except the logs. `secrets/` is not one
+  of them.
+
+`FLORA_NGINX=host` writes `/etc/nginx/conf.d/flora.conf` and reloads the host's
+nginx, validating first and restoring the previous file if validation fails.
 
 ### The alternative: hostnames
 

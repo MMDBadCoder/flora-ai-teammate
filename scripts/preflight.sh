@@ -24,6 +24,25 @@ proc_belongs_to_flora() {
   local pid="$1"
   [[ -r "/proc/$pid/cmdline" ]] && tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -qF "$FLORA_HOME" && return 0
   [[ -r "/proc/$pid/environ" ]] && tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep -qxF "FLORA_HOME=$FLORA_HOME" && return 0
+  # TokenRing runs as `node server/dist/main.js` from a WorkingDirectory, so its
+  # command line says nothing; its cwd and the agents' binaries do.
+  local link
+  for link in cwd exe; do
+    [[ -r "/proc/$pid/$link" ]] || continue
+    case "$(readlink -f "/proc/$pid/$link" 2>/dev/null || true)" in
+      "$FLORA_HOME"/*) return 0 ;;
+    esac
+  done
+  # Flora's containers hold host ports too (nginx under host networking,
+  # Mattermost through a published port). Their processes carry neither
+  # FLORA_HOME nor a recognisable command line, so match them by cgroup.
+  if have_cmd docker && [[ -r "/proc/$pid/cgroup" ]]; then
+    local name cid
+    for name in flora-nginx flora-mattermost flora-mm-postgres; do
+      cid="$(docker inspect -f '{{.Id}}' "$name" 2>/dev/null || true)"
+      [[ -n "$cid" ]] && grep -q "$cid" "/proc/$pid/cgroup" 2>/dev/null && return 0
+    done
+  fi
   return 1
 }
 
@@ -73,21 +92,25 @@ if have_cmd python3; then
 fi
 
 # --- nginx ------------------------------------------------------------------
-if have_cmd nginx; then
+if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
+  ok "Flora runs her own nginx in a container; the host does not need one"
+elif have_cmd nginx; then
   ok "found nginx"
   if [[ -d /etc/nginx/conf.d ]]; then ok "/etc/nginx/conf.d exists"
   else must "/etc/nginx/conf.d is missing -- this nginx has an unusual layout" \
             "Create it and make sure nginx.conf has:  include /etc/nginx/conf.d/*.conf;"; fi
 else
-  must "nginx is missing -- it is the only way the five hostnames get routed" "sudo apt install -y nginx"
+  must "FLORA_NGINX=host but nginx is not installed" \
+       "sudo apt install -y nginx
+     Or set FLORA_NGINX=docker in flora.env and let Flora run her own."
 fi
 have_cmd htpasswd || warn "no htpasswd (apt install apache2-utils) -- accounts will use an
        SHA-512 hash from openssl instead of bcrypt, which nginx accepts fine"
 
 # --- docker: only when Mattermost is switched on ----------------------------
-if [[ "${FLORA_ENABLE_MATTERMOST:-true}" == "true" ]]; then
+if [[ "${FLORA_ENABLE_MATTERMOST:-true}" == "true" || "${FLORA_NGINX:-docker}" == "docker" ]]; then
   if ! have_cmd docker; then
-    must "docker is missing -- Mattermost runs in containers" \
+    must "docker is missing -- Flora's nginx and Mattermost run in containers" \
          "sudo apt install -y docker.io docker-compose-v2
      Or set FLORA_ENABLE_MATTERMOST=false in flora.env to run without team chat."
   elif ! docker compose version >/dev/null 2>&1; then

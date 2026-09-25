@@ -33,7 +33,7 @@ flora -- the Flora AI teammate platform
     down [svc...]        stop
     restart [svc...]     restart
     status               health table
-    logs <svc> [-f]      tail a service log (tokenring|hermes|gateway|opencode|mattermost|nginx)
+    logs <svc> [-f]      tail a log (tokenring|hermes|gateway|opencode|mattermost|nginx)
 
   PEOPLE
     creds                every login, in one place
@@ -69,6 +69,7 @@ unit_for() {
     gateway)    echo flora-hermes-gateway.service ;;
     opencode)   echo flora-opencode.service ;;
     mattermost) echo flora-mattermost.service ;;
+    nginx)      echo flora-nginx.service ;;
     *) die "unknown service '$1' (tokenring|hermes|gateway|opencode|mattermost)" ;;
   esac
 }
@@ -152,7 +153,11 @@ case "$cmd" in
       hermes)     f="$FLORA_STATE/logs/hermes-dashboard.log" ;;
       gateway)    f="$FLORA_STATE/logs/hermes-gateway.log" ;;
       opencode)   f="$FLORA_STATE/logs/opencode.log" ;;
-      nginx)      f="$FLORA_STATE/logs/nginx-hermes.error.log" ;;
+      nginx)
+        if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
+          exec docker logs "${1:+--tail $1}" flora-nginx
+        fi
+        f="$FLORA_STATE/logs/nginx-hermes.error.log" ;;
       mattermost) exec docker compose -f "$FLORA_STATE/mattermost/docker-compose.yml" logs "$@" ;;
       *) die "unknown service '$svc'" ;;
     esac

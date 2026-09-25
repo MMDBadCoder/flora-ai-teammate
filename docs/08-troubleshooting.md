@@ -132,7 +132,9 @@ ss -ltn | grep -E ':70(8[0-4])'          # on the server: is nginx listening?
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Connection refused | nginx is not listening on that port | `sudo bin/flora nginx`, then `nginx -t` |
+| Connection refused | nginx is not listening on that port | `sudo bin/flora nginx`; check with `bin/flora logs nginx` |
+| `502 Bad Gateway` | the backend behind that port is down | `bin/flora status`, then `bin/flora logs <service>` |
+| flora-nginx restarts in a loop | a port it wants is already taken | `bin/flora logs nginx` names it; change the `FLORA_PUBLIC_*` variable |
 | Connection times out | a firewall between you and the server | open the `FLORA_PUBLIC_*` ports |
 | Port already in use at install | something else owns it | change `FLORA_PUBLIC_*` in `flora.env`, re-render, re-run `bin/flora nginx` |
 | `Could not resolve host` (hosts mode only) | the client has no `/etc/hosts` line | `bin/flora hosts --print`, paste it on the client |

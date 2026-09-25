@@ -14,9 +14,14 @@ About 30 minutes, most of it waiting for downloads.
 
 ```bash
 sudo apt update
-sudo apt install -y nginx git curl python3 openssl apache2-utils \
+sudo apt install -y git curl python3 openssl apache2-utils \
                     docker.io docker-compose-v2
 ```
+
+nginx is **not** in that list: by default Flora runs her own in a container
+(`FLORA_NGINX=docker`), writes nothing to `/etc/nginx`, and leaves any nginx
+already on the machine alone. Set `FLORA_NGINX=host` to use the host's instead,
+and then `apt install nginx` as well.
 
 On Debian, or with Docker's own repository, the compose package is called
 `docker-compose-plugin` instead of `docker-compose-v2`.

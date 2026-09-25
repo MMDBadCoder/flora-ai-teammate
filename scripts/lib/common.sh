@@ -118,14 +118,6 @@ load_env() {
   if [[ "${FLORA_HTTP_PORT:-80}" == "80" ]]; then export FLORA_URL_PORT=""
   else export FLORA_URL_PORT=":$FLORA_HTTP_PORT"; fi
 
-  # Where nginx finds the backends. A host nginx shares the loopback with them;
-  # a containerised one reaches them through the gateway address.
-  if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
-    export FLORA_UPSTREAM_HOST="host.docker.internal"
-  else
-    export FLORA_UPSTREAM_HOST="127.0.0.1"
-  fi
-
   # Every URL Flora prints or links to is derived here, so the addressing mode
   # is decided in exactly one place instead of in each script and template.
   if [[ "${FLORA_ROUTING:-ports}" == "hosts" ]]; then
@@ -380,8 +372,11 @@ has_systemd() { [[ -d /run/systemd/system ]] && have_cmd systemctl; }
 sd() { has_systemd || { warn "systemd unavailable; skipped: systemctl $*"; return 0; }; systemctl "$@"; }
 
 flora_units() {
-  printf '%s\n' flora-tokenring.service flora-hermes-dashboard.service \
-    flora-hermes-gateway.service flora-opencode.service flora-mattermost.service
+  local u=(flora-tokenring.service flora-hermes-dashboard.service
+           flora-hermes-gateway.service flora-opencode.service flora-mattermost.service)
+  # Flora's own nginx is a service like any other; a host nginx is not hers to manage.
+  [[ "${FLORA_NGINX:-docker}" == "docker" ]] && u+=(flora-nginx.service)
+  printf '%s\n' "${u[@]}"
 }
 flora_timers() {
   printf '%s\n' flora-skills-sync.timer flora-health.timer flora-housekeeping.timer

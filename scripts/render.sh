@@ -84,6 +84,11 @@ esac
 # --- systemd ----------------------------------------------------------------
 for tmpl in "$T"/systemd/*.tmpl; do
   unit="$(basename "$tmpl" .tmpl)"
+  # The nginx unit only makes sense when Flora runs her own.
+  if [[ "$unit" == "flora-nginx.service" && "${FLORA_NGINX:-docker}" != "docker" ]]; then
+    rm -f "$FLORA_STATE/systemd/$unit"
+    continue
+  fi
   render "$tmpl" "$FLORA_STATE/systemd/$unit" 0644
 done
 

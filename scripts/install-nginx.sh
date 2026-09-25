@@ -55,10 +55,8 @@ if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
   # Validate the generated config in a throwaway container before it can take
   # a serving one down.
   log "validating the configuration"
-  # nginx resolves upstream names when it loads the config, so the throwaway
-  # container needs the same host mapping the real one gets from extra_hosts.
   if ! docker run --rm \
-        --add-host "host.docker.internal:host-gateway" \
+        -v /dev/null:/etc/nginx/conf.d/default.conf:ro \
         -v "$SRC:/etc/nginx/conf.d/flora.conf:ro" \
         -v "$FLORA_STATE/nginx:$FLORA_STATE/nginx:ro" \
         -v "$FLORA_HOME/web/dashboard:$FLORA_HOME/web/dashboard:ro" \

@@ -14,6 +14,7 @@ runtimes so she never knows something in one place and not the other.
                                   │
                   ┌───────────────▼────────────────┐
                   │  nginx    one port per service │
+                  │  (Flora's own container)       │
                   └──┬────────┬────────┬────────┬──┘
                 :7081│   :7082│   :7083│   :7084│
              ┌───────▼──┐ ┌───▼────┐ ┌─▼──────┐ ┌▼──────────┐
@@ -27,7 +28,8 @@ runtimes so she never knows something in one place and not the other.
 ```
 
 No DNS and no `/etc/hosts`: every service is reached by address and port, and
-the dashboard links to the rest.
+the dashboard links to the rest. nginx runs in Flora's own container, so nothing
+is written to `/etc/nginx` and the machine does not need nginx installed.
 
 ## Start here
 

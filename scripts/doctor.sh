@@ -101,8 +101,14 @@ step "6. Skills"
 "$FLORA_HOME/scripts/skills-sync.sh" --check || bad "the skill tree has drifted (run: bin/flora skills sync)"
 
 step "7. Routing"
-if have_cmd nginx; then
-  nginx -t >/dev/null 2>&1 && ok "nginx config is valid" || bad "nginx -t fails"
+if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx flora-nginx; then
+    ok "flora-nginx container is running (nothing written to /etc/nginx)"
+  else
+    bad "flora-nginx is not running (sudo bin/flora nginx)"
+  fi
+elif have_cmd nginx; then
+  nginx -t >/dev/null 2>&1 && ok "host nginx config is valid" || bad "nginx -t fails"
   [[ -f /etc/nginx/conf.d/flora.conf ]] && ok "flora.conf installed" || bad "flora vhosts not installed (bin/flora nginx)"
 fi
 if [[ "${FLORA_ROUTING:-ports}" == "hosts" ]]; then

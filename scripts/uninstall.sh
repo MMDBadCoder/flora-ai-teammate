@@ -28,7 +28,7 @@ echo "  systemd     $(flora_units | tr '\n' ' ')"
 echo "              $(flora_timers | tr '\n' ' ') flora-skills-sync.path flora.target"
 echo "  nginx       /etc/nginx/conf.d/flora.conf   (then a reload)"
 echo "  /etc/hosts  the flora block"
-echo "  docker      flora-mattermost, flora-mm-postgres"
+echo "  docker      flora-mattermost, flora-mm-postgres, flora-nginx"
 echo
 if [[ "$PURGE" == "1" ]]; then
   printf '  %sDELETED TOO (--purge):%s\n' "$_c_red$_c_bold" "$_c_reset"
@@ -77,16 +77,20 @@ fi
 
 # --- containers -------------------------------------------------------------
 step "Containers"
-if have_cmd docker && [[ -f "$FLORA_STATE/mattermost/docker-compose.yml" ]]; then
-  docker compose -f "$FLORA_STATE/mattermost/docker-compose.yml" down --remove-orphans >/dev/null 2>&1 \
-    && ok "stopped and removed the Mattermost containers" \
-    || skip "no Mattermost containers running"
+if have_cmd docker; then
+  for c in "$FLORA_STATE/mattermost/docker-compose.yml:Mattermost" "$FLORA_STATE/nginx/docker-compose.yml:nginx"; do
+    file="${c%:*}"; label="${c##*:}"
+    [[ -f "$file" ]] || continue
+    docker compose -f "$file" down --remove-orphans >/dev/null 2>&1 \
+      && ok "stopped and removed the $label container(s)" \
+      || skip "no $label containers running"
+  done
 else
-  skip "nothing to do"
+  skip "no docker here"
 fi
 
 # --- nginx ------------------------------------------------------------------
-step "nginx"
+step "host nginx"
 if [[ -f /etc/nginx/conf.d/flora.conf ]]; then
   rm -f /etc/nginx/conf.d/flora.conf
   ok "removed /etc/nginx/conf.d/flora.conf"
@@ -97,7 +101,7 @@ if [[ -f /etc/nginx/conf.d/flora.conf ]]; then
     warn "nginx -t fails for reasons unrelated to Flora; did not reload"
   fi
 else
-  skip "no flora.conf installed"
+  skip "nothing in /etc/nginx (Flora ran her own nginx)"
 fi
 
 # --- /etc/hosts -------------------------------------------------------------
