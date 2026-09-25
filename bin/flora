@@ -35,6 +35,7 @@ flora -- the Flora AI teammate platform
     logs <svc> [-f]      tail a service log (tokenring|hermes|gateway|opencode|mattermost|nginx)
 
   PEOPLE
+    creds                every login, in one place
     user add <name> [pw] create or reset a UI account
     user del <name>      remove one
     user list            list them
@@ -155,6 +156,7 @@ case "$cmd" in
     if [[ "${1:-}" == "-f" ]]; then tail -f "$f"; else tail -n "${1:-200}" "$f"; fi ;;
 
   user)    load_env; "$S/users.sh" "$@" ;;
+  creds)   load_env; "$S/creds.sh" ;;
 
   skills)
     load_env

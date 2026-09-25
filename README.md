@@ -84,6 +84,7 @@ bin/flora status                 # is everything up?
 bin/flora logs gateway -f        # why isn't Flora answering in chat?
 bin/flora skills list            # what does she know?
 bin/flora skills new <name>      # teach her something
+bin/flora creds                  # every login, in one place
 bin/flora update                 # what is deployed vs available upstream
 bin/flora doctor                 # what is wrong?
 ```

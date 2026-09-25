@@ -1,5 +1,21 @@
 # Accounts and access
 
+## Where are my passwords?
+
+```bash
+bin/flora creds
+```
+
+Prints every login: the account nginx checks for the dashboard and both agent
+UIs, the TokenRing dashboard password, and what Mattermost expects. It reads
+`secrets/flora.env`, so it only works on the server.
+
+The short version: the **username** is `FLORA_ADMIN_USER` in `flora.env`
+(`admin` by default) and the **password** is `FLORA_ADMIN_PASSWORD` in
+`secrets/flora.env`, generated on first install. `sudo bin/flora nginx` turns
+that pair into the first entry of `state/nginx/htpasswd`, which is the file
+nginx actually reads.
+
 ## Three separate account systems
 
 There is no single sign-on here. Each surface authenticates its own way, and
