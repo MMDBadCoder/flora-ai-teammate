@@ -59,12 +59,25 @@ for legacy in "$HERMES_HOME/hermes-agent" "$HERMES_HOME/tools"; do
   rm -rf "$legacy"
   ok "removed ${legacy/#$FLORA_HOME/.}"
 done
-for shim in "$HOME/.local/bin/hermes" "$HOME/.local/bin/hermes-gateway"; do
-  if [[ -e "$shim" ]] && ! is_external_known "$HOME/.hermes"; then
-    warn "an earlier run left a shim at $shim.
-       It is not what Flora uses. Remove it if you do not run Hermes yourself:
+# ~/.local/bin/hermes may be the operator's own install or the leftover of an
+# earlier Flora run. The shim says which, so read it rather than guess.
+for shim in "$HOME"/.local/bin/hermes "$HOME"/.local/bin/hermes-acp "$HOME"/.local/bin/hermes-agent; do
+  [[ -e "$shim" ]] || continue
+  case "$(classify_shim "$shim")" in
+    flora)
+      warn "$shim was left by an earlier Flora run.
+       It points at:  $(shim_target "$shim")
+       Flora does not use it -- it runs state/bin/hermes. Safe to delete:
          rm -f $shim"
-  fi
+      ;;
+    external)
+      skip "$shim belongs to your own Hermes ($(shim_target "$shim")); left alone"
+      ;;
+    *)
+      warn "$shim exists and I cannot tell which install it belongs to.
+       Check it with:  cat $shim"
+      ;;
+  esac
 done
 # A failed interactive run can leave a user unit behind, pointing at a binary
 # that is about to be replaced.

@@ -249,6 +249,31 @@ record_external_installs() {
   fi
 }
 
+# Hermes drops 2-line exec shims into ~/.local/bin. Reading one tells you which
+# install it belongs to, which is the only way to know whether it is safe to
+# delete: a shim pointing inside FLORA_HOME was left by an earlier, non-isolated
+# Flora run; one pointing anywhere else belongs to whoever installed Hermes for
+# themselves. Prints: flora | external | unknown
+classify_shim() {
+  local shim="$1" target
+  [[ -e "$shim" ]] || { echo missing; return; }
+  target="$(readlink -f "$shim" 2>/dev/null || true)"
+  # A shim is usually a script, not a symlink; pull the path out of the exec line.
+  if [[ ! -x "$target" || "$target" == "$shim" ]]; then
+    target="$(grep -oE '(/[^ "]+)+/\.hermes/bin/[a-z-]+' "$shim" 2>/dev/null | head -1 || true)"
+  fi
+  [[ -z "$target" ]] && { echo unknown; return; }
+  case "$target" in
+    "$FLORA_HOME"/*) echo flora ;;
+    *)               echo external ;;
+  esac
+}
+
+shim_target() {
+  grep -oE '(/[^ "]+)+/\.hermes/bin/[a-z-]+' "$1" 2>/dev/null | head -1 \
+    || readlink -f "$1" 2>/dev/null || true
+}
+
 is_external_known() {
   local f="$FLORA_HOME/$EXTERNAL_LIST_REL"
   [[ -f "$f" ]] && grep -qxF "$1" "$f"

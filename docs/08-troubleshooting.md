@@ -69,9 +69,31 @@ bin/flora install hermes
 ```
 
 The installer now also removes what the failed run left behind: the non-isolated
-checkout under `state/hermes/home/hermes-agent`, and it points out any stray
-`~/.local/bin/hermes` shim or `~/.config/systemd/user/hermes-gateway-*.service`
-unit so you can delete them.
+checkout and tool store under `state/hermes/home/`, and it classifies any
+`~/.local/bin/hermes` shim for you.
+
+### Is `~/.local/bin/hermes` mine or Flora's?
+
+It is a two-line script that names the install it runs, so read it:
+
+```bash
+cat ~/.local/bin/hermes
+#!/bin/sh
+exec /path/to/whatever/.hermes/bin/hermes "$@"
+```
+
+| The path points at | What it is | Do |
+|---|---|---|
+| somewhere under your Flora directory | left by an earlier, non-isolated Flora run | `rm -f ~/.local/bin/hermes` — Flora does not use it |
+| `~/.hermes/hermes-agent/…` | your own personal Hermes | leave it, unless you no longer want that install |
+
+`bin/flora doctor` makes the same call for you, along with `hermes-acp` and
+`hermes-agent`, which the installer drops beside it.
+
+A current Flora install never writes there at all: it runs the upstream
+installer with `HOME` pointed at `state/hermes/fs-home`, so the shims land at
+`state/hermes/fs-home/.local/bin/` and the PATH lines go into that directory's
+own `.bashrc`.
 
 ## Running on WSL
 
