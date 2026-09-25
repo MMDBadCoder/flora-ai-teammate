@@ -51,13 +51,14 @@ fi
 # operator's ~/.local/bin. Anything left from that is removed here: it is a
 # re-downloadable checkout, and leaving it costs a couple of gigabytes and a
 # `hermes` on PATH that quietly is not the one Flora runs.
-LEGACY_AGENT="$HERMES_HOME/hermes-agent"
-if [[ -d "$LEGACY_AGENT" ]]; then
-  warn "found an earlier, non-isolated install at ${LEGACY_AGENT/#$FLORA_HOME/.}"
+# The old layout put both the checkout and the tool store under HERMES_HOME.
+for legacy in "$HERMES_HOME/hermes-agent" "$HERMES_HOME/tools"; do
+  [[ -d "$legacy" ]] || continue
+  warn "found an earlier, non-isolated install at ${legacy/#$FLORA_HOME/.} ($(du -sh "$legacy" 2>/dev/null | cut -f1))"
   log "removing it; the private install below replaces it"
-  rm -rf "$LEGACY_AGENT"
-  ok "removed ${LEGACY_AGENT/#$FLORA_HOME/.}"
-fi
+  rm -rf "$legacy"
+  ok "removed ${legacy/#$FLORA_HOME/.}"
+done
 for shim in "$HOME/.local/bin/hermes" "$HOME/.local/bin/hermes-gateway"; do
   if [[ -e "$shim" ]] && ! is_external_known "$HOME/.hermes"; then
     warn "an earlier run left a shim at $shim.
