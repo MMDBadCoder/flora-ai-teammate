@@ -22,6 +22,8 @@ flora -- the Flora AI teammate platform
   SETUP
     install [what]       install or update software (all|hermes|opencode|tokenring|mattermost)
     render               regenerate every config from config/templates/
+    seed [--diff]        install shipped defaults into shared/ without overwriting
+    migrate-shared       one-time: move a tracked shared/ out of git's way
     nginx                install the vhosts and reload nginx          (root)
     hosts [--print]      write /etc/hosts here; print the line for clients
     systemd              install and enable the units                 (root)
@@ -129,6 +131,8 @@ case "$cmd" in
   upgrade)    load_env; "$S/upgrade.sh" "$@" ;;
   uninstall)  load_env; need_root; "$S/uninstall.sh" "$@" ;;
   render)     load_env; "$S/render.sh" ;;
+  seed)       load_env; "$S/seed.sh" "$@" ;;
+  migrate-shared) load_env; "$S/migrate-shared.sh" ;;
   nginx)      load_env; "$S/install-nginx.sh" ;;
   hosts)      load_env; "$S/install-hosts.sh" "$@" ;;
   systemd)    load_env; "$S/install-systemd.sh" ;;

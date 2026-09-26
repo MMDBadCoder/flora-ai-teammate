@@ -36,7 +36,8 @@ import subprocess
 import sys
 
 HOME = os.environ["FLORA_HOME"]
-SHARED = os.path.join(HOME, "shared", "skills")
+SHARED_ROOT = os.path.join(HOME, "shared")
+SHARED = os.path.join(SHARED_ROOT, "skills")
 HERMES_SKILLS = os.path.join(HOME, "state", "hermes", "home", "skills")
 CATEGORY = os.environ.get("FLORA_HERMES_SKILL_CATEGORY", "team")
 OC = os.path.join(HOME, "state", "opencode")
@@ -219,24 +220,31 @@ def prune(d, valid, check):
 
 
 def git_commit(check):
-    """Version the shared brain. Every skill change is reviewable in git log."""
+    """Version the shared brain -- in shared/'s OWN repository, if it has one.
+
+    The platform repository deliberately does not track shared/: both agents
+    write there, and tracking live data in the repo you `git pull` from makes
+    every upgrade collide with the platform's own data. Skill history is still
+    worth having, so if someone runs `git init` inside shared/ this commits
+    there. Without that, it does nothing and says nothing.
+    """
     if check or os.environ.get("FLORA_SKILLS_GIT", "true") != "true":
         return
-    if not os.path.isdir(os.path.join(HOME, ".git")):
+    if not os.path.isdir(os.path.join(SHARED_ROOT, ".git")):
         return
     try:
-        status = subprocess.run(["git", "-C", HOME, "status", "--porcelain", "--", "shared/"],
+        status = subprocess.run(["git", "-C", SHARED_ROOT, "status", "--porcelain"],
                                 capture_output=True, text=True, check=True).stdout.strip()
         if not status:
             return
-        subprocess.run(["git", "-C", HOME, "add", "shared/"], check=True,
-                       stdout=subprocess.DEVNULL)
-        subprocess.run(["git", "-C", HOME, "commit", "-q", "-m",
-                        "skills: sync shared brain\n\nAutomated by scripts/skills-sync.sh."],
+        subprocess.run(["git", "-C", SHARED_ROOT, "add", "-A"], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(["git", "-C", SHARED_ROOT,
+                        "-c", "user.name=Flora", "-c", "user.email=flora@localhost",
+                        "commit", "-q", "-m", "skills: sync shared brain"],
                        check=True, stdout=subprocess.DEVNULL)
-        say("committed shared/ changes to git", "move")
+        say("committed to shared/'s own git repository", "move")
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        say("could not commit shared/ to git: %s" % exc, "warn")
+        say("could not commit in shared/: %s" % exc, "warn")
 
 
 def main():

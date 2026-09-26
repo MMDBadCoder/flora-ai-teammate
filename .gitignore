@@ -6,6 +6,15 @@
 # this machine (secrets/). To copy the platform elsewhere, copy the directory.
 # ---------------------------------------------------------------------------
 
+# Live data. shared/ is Flora's brain -- skills, instructions, MCP servers -- and
+# both agents WRITE to it, so it cannot live in the repository you pull the
+# platform from: a `git pull` would collide with the platform's own data every
+# time. The shipped defaults are in seed/ and `bin/flora seed` installs any that
+# are missing, without ever overwriting a live file.
+# To keep a history of your own skills, make shared/ its own repository:
+#     git init shared && git -C shared add -A && git -C shared commit -m "skills"
+/shared/
+
 # Runtime state: agent sessions, databases, Mattermost volumes, caches.
 /state/
 

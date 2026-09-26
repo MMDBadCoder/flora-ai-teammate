@@ -29,6 +29,10 @@ ensure_dir "$FLORA_SHARED/skills"
 ensure_dir "$FLORA_SHARED/agents"
 ensure_dir "$FLORA_SHARED/mcp"
 
+# Install any shipped default that is not there yet. Never overwrites a live file.
+"$FLORA_HOME/scripts/seed.sh" | sed 's/^/  /'
+
+
 # --- MCP: one shared list, injected into OpenCode's config ------------------
 # Hermes gets the same servers through scripts/agents-sync.sh, which calls
 # `hermes mcp add`. The single source of truth is shared/mcp/servers.json.
