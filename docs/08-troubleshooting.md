@@ -95,6 +95,28 @@ installer with `HOME` pointed at `state/hermes/fs-home`, so the shims land at
 `state/hermes/fs-home/.local/bin/` and the PATH lines go into that directory's
 own `.bashrc`.
 
+## `git pull` says "cannot pull with rebase: You have unstaged changes"
+
+If the changes are in `shared/`, this is the one-time migration: `shared/` used
+to be tracked and is now live data that the repository ignores. Your edits are
+not lost.
+
+```bash
+cp -a shared shared.mine          # your data, safe
+git checkout -- shared/           # discard the tracked copies; yours are aside
+git pull --rebase origin main
+bin/flora migrate-shared          # seeds the defaults, copies yours back on top
+rm -rf shared.mine                # once you are happy
+```
+
+Verified against a checkout with all three kinds of local change — an edited
+shipped skill, a brand new skill, and an edited `SOUL.md` — all three survive.
+
+After this, `git pull` never touches Flora's data again.
+
+If the changes are somewhere else, they are yours: `git status` will say where,
+and `git stash` then `git stash pop` around the pull is the usual answer.
+
 ## The server's address changed
 
 `FLORA_IP` is not only cosmetic: it is baked into Mattermost's `SiteURL` and

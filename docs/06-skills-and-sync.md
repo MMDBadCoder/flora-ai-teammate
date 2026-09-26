@@ -32,7 +32,43 @@ so:
 lands in `shared/skills/gerrit-change/SKILL.md`, and OpenCode has already
 changed. There is no sync delay because there is no sync — only one file.
 
-`shared/skills/` is git-tracked, so every change is a reviewable diff.
+### shared/ is data, not code
+
+`shared/` is **git-ignored by the platform repository**. It has to be: both
+agents write to it, so tracking it in the repo you `git pull` from means every
+upgrade collides with the running system's own data. That is not hypothetical --
+it is the first thing that happens.
+
+What is tracked is `seed/`, the shipped defaults:
+
+```
+seed/skills/gerrit-change/SKILL.md      shipped, tracked, updated by git pull
+shared/skills/gerrit-change/SKILL.md    yours, live, never touched by git
+```
+
+`bin/flora seed` installs any default that is missing and **never overwrites a
+live file**. It runs as part of `bin/flora render`, so a new skill shipped in a
+release appears after an upgrade, while your edits to an existing one stay yours.
+
+```bash
+bin/flora seed              # add what is missing
+bin/flora seed --diff       # where have my copies drifted from the defaults?
+bin/flora seed --force skills/gerrit-change/SKILL.md   # take the shipped one
+```
+
+`--force` keeps your version alongside as `.replaced-<stamp>` first.
+
+### Keeping a history of your skills
+
+Version them where they live, in their own repository:
+
+```bash
+git init shared && git -C shared add -A && git -C shared commit -m "skills"
+```
+
+The reconciler then commits there on every change, so `git -C shared log -p` is
+the record of how Flora's knowledge moved, and `git -C shared revert` undoes a
+bad edit. Without that repository it stays silent -- no history, no complaints.
 
 ## The reconciler
 
@@ -97,7 +133,7 @@ Either agent can create a skill on its own. Tell her in chat:
 > That took us four tries. Write it up as a skill so nobody repeats it.
 
 Hermes writes into its `team` category, which *is* `shared/skills`, so it lands
-in the shared tree and is committed to git on the next reconcile.
+in the shared tree and both agents see it on the next reconcile.
 
 To require human review of every agent-written skill, set
 `skills.write_approval: true` in `config/templates/hermes/config.yaml.tmpl`.
@@ -174,8 +210,15 @@ readlink state/hermes/home/skills/team   # must be …/shared/skills
 
 **A skill went missing.**
 
+If `shared/` is its own git repository:
+
 ```bash
-git -C . log --oneline -- shared/skills/<name>
-git -C . checkout HEAD~1 -- shared/skills/<name>
+git -C shared log --oneline -- skills/<name>
+git -C shared checkout HEAD~1 -- skills/<name>
 ```
-This is the reason `shared/` is a git repository and `state/` is not.
+
+If it is one of the shipped skills, take the default back:
+
+```bash
+bin/flora seed              # restores anything missing
+```

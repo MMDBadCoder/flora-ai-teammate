@@ -67,7 +67,8 @@ flora/
 ├── secrets/             credentials, 0600, never committed
 ├── config/templates/    the source of truth for every config file
 ├── scripts/             one job per script, all idempotent
-├── shared/              THE BRAIN — skills, instructions, MCP servers (tracked)
+├── seed/                shipped default skills and instructions (tracked)
+├── shared/              THE BRAIN — live skills, instructions, MCP (git-ignored)
 ├── state/               everything the four services write (git-ignored)
 ├── workspace/           repositories Flora works in
 └── web/dashboard/       the launcher page
@@ -81,6 +82,10 @@ Two rules keep this manageable:
    Flora, whole.
 2. **Configs are generated, never hand-edited.** Edit `config/templates/**`,
    then `bin/flora render`. Anything under `state/` is disposable output.
+3. **The repository tracks code, never data.** `shared/`, `state/`, `secrets/`
+   and `flora.env` are ignored, so `git pull` can never collide with a running
+   Flora. Shipped defaults live in `seed/` and are copied into `shared/` only
+   when missing.
 
 ## The daily commands
 

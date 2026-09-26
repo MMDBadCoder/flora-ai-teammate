@@ -224,10 +224,12 @@ git pull --rebase origin main        # pull first, by hand
 sudo bin/flora upgrade
 ```
 
+`git pull` is always clean, because the repository does not track anything Flora
+writes: `shared/` is ignored, and the shipped defaults live in `seed/`.
+
 `upgrade` is the whole sequence, in the right order and without losing anything:
 
-1. commits any uncommitted work in `shared/`, so a later rebase cannot eat it
-2. snapshots `secrets/`, `shared/`, `flora.env` and `state/` to
+1. snapshots `secrets/`, `shared/`, `flora.env` and `state/` to
    `/tmp/flora-preupgrade-<stamp>.tar.gz` — your way back
 3. runs `uninstall` (**not** `--purge`), which clears units and any nginx
    arrangement the old version installed but the new one does not use
@@ -238,9 +240,10 @@ The pull is deliberately separate: bash reads a script as it runs, so a script
 that rewrites itself mid-execution is a good way to end up running half of two
 versions.
 
-**What survives:** everything in `state/` and `secrets/` — TokenRing's key pool
-and `master.key`, Hermes' sessions, memories and config, OpenCode's sessions,
-Mattermost's database, every credential — plus `shared/`, which is in git.
+**What survives:** everything in `state/`, `secrets/` and `shared/` — TokenRing's
+key pool and `master.key`, Hermes' sessions, memories and config, OpenCode's
+sessions, Mattermost's database, every credential, every skill. None of it is
+tracked by the repository, so a pull cannot touch it.
 
 **What is regenerated:** every file under `state/` that `render` owns. If you
 hand-edited one, `render` notices, keeps your version beside it as
