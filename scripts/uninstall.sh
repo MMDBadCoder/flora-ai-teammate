@@ -34,7 +34,9 @@ if [[ "$PURGE" == "1" ]]; then
   printf '  %sDELETED TOO (--purge):%s\n' "$_c_red$_c_bold" "$_c_reset"
   printf '    state/      %s   sessions, memories, key pool, chat history, both agents\n' "$(du -sh state 2>/dev/null | cut -f1 || echo '-')"
   printf '    secrets/    every credential, including TOKENRING_ENCRYPTION_KEY\n'
+  printf '    shared/     %s   skills and instructions (defaults return from seed/)\n' "$(du -sh shared 2>/dev/null | cut -f1 || echo '-')"
   printf '    workspace/  %s   repository clones\n' "$(du -sh workspace 2>/dev/null | cut -f1 || echo '-')"
+  printf '    flora.env   kept aside as flora.env.bak-<stamp>, not deleted\n'
   echo
   printf '  %sThere is no backup tooling. Anything not pushed to Gerrit or git is gone.%s\n' "$_c_ylw" "$_c_reset"
 else
@@ -120,7 +122,7 @@ if [[ "$PURGE" == "1" ]]; then
   step "Data"
   # Explicit paths only. Never a variable that could be empty and turn this into
   # `rm -rf /`.
-  for d in "$FLORA_HOME/state" "$FLORA_HOME/secrets"; do
+  for d in "$FLORA_HOME/state" "$FLORA_HOME/secrets" "$FLORA_HOME/shared"; do
     [[ -d "$d" ]] || continue
     [[ "$d" == "$FLORA_HOME"/* ]] || die "refusing to delete $d: outside $FLORA_HOME"
     rm -rf "$d"; ok "deleted ${d/#$FLORA_HOME/.}"
@@ -129,16 +131,24 @@ if [[ "$PURGE" == "1" ]]; then
     find "$FLORA_HOME/workspace" -mindepth 1 -maxdepth 1 ! -name '.gitkeep' -exec rm -rf {} + 2>/dev/null || true
     ok "emptied ./workspace"
   fi
-  rm -f "$FLORA_HOME/flora.env"; ok "deleted ./flora.env"
+  # Settings are not data: keeping them saves re-deriving FLORA_IP and the ports,
+  # and a clearly named backup is easy to delete if a truly blank slate is wanted.
+  if [[ -f "$FLORA_HOME/flora.env" ]]; then
+    bak="$FLORA_HOME/flora.env.bak-$(date +%Y%m%d-%H%M%S)"
+    mv "$FLORA_HOME/flora.env" "$bak"
+    ok "settings kept at ${bak/#$FLORA_HOME/.}"
+  fi
 
 fi
 
 step "Done"
 if [[ "$PURGE" == "1" ]]; then
   log "Flora is gone. To start over:"
-  log "    git pull --rebase origin main"
-  log "    cp flora.env.example flora.env   &&   \$EDITOR flora.env"
+  log "    cp flora.env.bak-* flora.env      # or: cp flora.env.example flora.env"
   log "    sudo ./bin/flora bootstrap"
+  echo
+  log "Reinstalling re-downloads both agents (~3GB). To reclaim the Docker images too:"
+  log "    docker image rm nginx:1.27-alpine mattermost/mattermost-team-edition:10.5 postgres:16-alpine"
 else
   log "System integration removed; your data is still in state/ and secrets/."
   log "To reinstall on the current code:"
