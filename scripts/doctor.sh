@@ -138,6 +138,29 @@ else
       bad "nothing is listening on $1 ($2) -- run: sudo bin/flora nginx"
     fi
   done
+
+  # A listening port says nothing about whether FLORA_IP is the address that
+  # actually reaches it. Hermes enforces that match itself (DNS-rebinding
+  # protection: it only trusts the exact host in HERMES_DASHBOARD_PUBLIC_URL),
+  # unlike the dashboard and the other three services, which tolerate being
+  # reached by any address. Probe the backend directly with the Host header a
+  # real request through nginx via FLORA_IP would carry, so a mismatch shows up
+  # here instead of as a confusing 400 the first time someone opens Hermes.
+  if [[ "${FLORA_ENABLE_HERMES:-true}" == "true" ]] && have_cmd curl; then
+    hermes_code="$(curl -s -o /dev/null -w '%{http_code}' -m 4 \
+      -H "Host: ${FLORA_IP}:${FLORA_PUBLIC_HERMES}" \
+      "http://127.0.0.1:${FLORA_PORT_HERMES}/" 2>/dev/null || echo 000)"
+    case "$hermes_code" in
+      400) bad "Hermes rejects FLORA_IP=$FLORA_IP -- HERMES_DASHBOARD_PUBLIC_URL does not match
+       the address people actually use to reach it. Whoever opens Hermes at any
+       address other than exactly this one gets a 400 'Invalid Host header'.
+       Fix: set FLORA_IP in flora.env to that address, then:
+       bin/flora render && bin/flora restart hermes gateway" ;;
+      200|401|403) ok "Hermes accepts requests addressed to $FLORA_IP" ;;
+      000) : ;; # not listening yet -- health.sh above already reported that
+      *) warn "could not verify Hermes' Host-header check (got HTTP $hermes_code)" ;;
+    esac
+  fi
 fi
 if [[ "$FLORA_AUTH_MODE" == "nginx" ]]; then
   [[ -s "$FLORA_STATE/nginx/htpasswd" ]] && ok "$(wc -l < "$FLORA_STATE/nginx/htpasswd") UI account(s)" \

@@ -151,6 +151,43 @@ platform code, not for a settings change.
 
 The dashboard itself does not care: it rebuilds its links from whatever host the
 browser used, so it keeps working at the new address even before you re-render.
+**Hermes is the one exception** — see the next section if opening it gives a
+Host-header error.
+
+## Hermes says "Invalid Host header"
+
+```
+{"detail":"Invalid Host header. Dashboard requests must use the bound hostname
+or the configured public hostname."}
+```
+
+Unlike the dashboard (and OpenCode, TokenRing, Mattermost), Hermes enforces
+DNS-rebinding protection: it only accepts requests whose `Host` header matches
+`HERMES_DASHBOARD_PUBLIC_URL` exactly, which Flora renders from `FLORA_IP`. So
+if your team reaches Flora by more than one address — a LAN IP for some
+people, a VPN address or `localhost` over an SSH tunnel for others, a public
+IP for a third group — Hermes rejects every one of them except whichever
+single address `FLORA_IP` is currently set to, even though the dashboard tile
+that links to it loads fine from all of them.
+
+There is no config for multiple trusted addresses; Hermes only accepts the one
+declared. Pick the one address your team will standardise on:
+
+```bash
+$EDITOR flora.env            # FLORA_IP=<that one address>
+bin/flora render
+bin/flora restart hermes gateway
+```
+
+`bin/flora doctor` checks this directly (a real request through Hermes' own
+Host-header check, not just "is the port listening") and will fail with a
+clear message if `FLORA_IP` and reality have drifted apart — run it after any
+change here.
+
+If people genuinely need to reach Flora by different addresses depending on
+where they are, put a stable DNS name in front of it and set `FLORA_IP`
+(or `FLORA_ROUTING=hosts` and the `FLORA_HOST_*` variables) to that name
+instead of a specific IP.
 
 ## Running on WSL
 

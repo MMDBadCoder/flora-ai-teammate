@@ -75,6 +75,13 @@ dashboard and click. It also works over `localhost`, a VPN address or a LAN IP
 with no extra configuration, because the dashboard rebuilds its links against
 whatever host the browser used to reach it.
 
+**Hermes is the one tile that does not share this flexibility.** It enforces
+DNS-rebinding protection and only accepts the exact address declared in
+`FLORA_IP`, so a team reaching Flora by more than one address will find the
+other three services and the dashboard itself work from all of them, while
+Hermes gives a "Invalid Host header" 400 to everyone except whoever used that
+one address. See [08-troubleshooting.md](08-troubleshooting.md#hermes-says-invalid-host-header).
+
 The backends stay on `127.0.0.1`. nginx is the only thing listening publicly,
 which is what lets one account list guard both agent UIs — and both of them can
 run shell commands on this machine.
