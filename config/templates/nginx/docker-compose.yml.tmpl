@@ -36,7 +36,14 @@ services:
       # networking that collides with whatever already owns :80 on this machine
       # and nginx refuses to start, so it is masked out.
       - /dev/null:/etc/nginx/conf.d/default.conf:ro
-      - {{FLORA_HOME}}/state/nginx/flora.conf:/etc/nginx/conf.d/flora.conf:ro
+      # A one-line `include` stub, not flora.conf itself -- a single-file bind
+      # mount goes stale the moment the host file is replaced via mktemp+mv
+      # (a new inode), which is exactly how flora.conf gets rewritten on every
+      # config change. This stub's own content is near-constant, so IT is safe
+      # to bind-mount directly; it hands off to the real flora.conf through
+      # the directory mount below, which has no such staleness problem. See
+      # render.sh, in the block that writes state/nginx/loader.conf.
+      - {{FLORA_HOME}}/state/nginx/loader.conf:/etc/nginx/conf.d/flora.conf:ro
       # Mounted at their real paths, because the generated config refers to them
       # by absolute path and that same file has to work under a host nginx too.
       - {{FLORA_HOME}}/state/nginx:{{FLORA_HOME}}/state/nginx:ro

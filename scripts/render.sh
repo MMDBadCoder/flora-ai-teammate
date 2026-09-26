@@ -76,6 +76,31 @@ esac
 # Flora's own nginx, when she runs one.
 if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
   render "$T/nginx/docker-compose.yml.tmpl" "$FLORA_STATE/nginx/docker-compose.yml" 0644
+
+  # Docker bind-mounts flora.conf as a single file (see the compose template),
+  # and write_if_changed() replaces files via mktemp (a different filesystem)
+  # + mv -- a rename, which gives the target a NEW inode. A single-file bind
+  # mount keeps pointing at the inode it saw at mount time, so the running
+  # container would silently keep serving whatever flora.conf said the moment
+  # nginx last started, no matter how many times it changes after that.
+  # Confirmed live: a routing change here was validated, "reloaded" logged
+  # success, and the container kept the previous config anyway.
+  #
+  # The directory mount two lines below this one in the compose file (the
+  # whole of state/nginx, read-only) does NOT have this problem -- a
+  # directory mount resolves the name inside it fresh on every access, so
+  # auth.conf and dashboard-auth.conf, which are only ever reached through
+  # that mount, always see current content. This loader is the fix: its own
+  # content never changes across renders (FLORA_HOME doesn't change without
+  # also changing the compose file, which does force a full container
+  # recreation), so IT can safely be the thing bind-mounted as a single file,
+  # and it simply hands off to the real, frequently-regenerated flora.conf by
+  # `include`, resolved through the always-live directory mount instead.
+  cat <<LOADER | write_if_changed "$FLORA_STATE/nginx/loader.conf"
+# GENERATED, and deliberately near-constant -- see the comment in render.sh
+# above the call that writes this file for why it exists at all.
+include $FLORA_HOME/state/nginx/flora.conf;
+LOADER
 fi
 
 case "$FLORA_AUTH_MODE" in
@@ -95,6 +120,19 @@ AUTH
     ;;
   *) die "FLORA_AUTH_MODE must be 'nginx' or 'backend' (got: $FLORA_AUTH_MODE)" ;;
 esac
+
+# The dashboard is static content with no backend of its own to enforce a
+# password -- in FLORA_AUTH_MODE=backend, auth.conf above is deliberately a
+# no-op for the services that DO have their own gate, but the dashboard has
+# none, so that same no-op would leave it wide open. It costs nothing to keep
+# gated regardless of mode (no backend password to conflict with), so it gets
+# its own always-on account-list file instead of sharing auth.conf.
+cat <<AUTH | write_if_changed "$FLORA_STATE/nginx/dashboard-auth.conf"
+# GENERATED. The dashboard has no backend of its own, so it stays behind the
+# account list in every FLORA_AUTH_MODE. Manage accounts with: bin/flora user add <name>
+auth_basic "Flora";
+auth_basic_user_file $FLORA_STATE/nginx/htpasswd;
+AUTH
 
 # --- systemd ----------------------------------------------------------------
 for tmpl in "$T"/systemd/*.tmpl; do

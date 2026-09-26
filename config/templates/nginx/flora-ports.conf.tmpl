@@ -31,7 +31,7 @@ server {
     root {{FLORA_HOME}}/state/dashboard;
     index index.html;
 
-    include {{FLORA_HOME}}/state/nginx/auth.conf;
+    include {{FLORA_HOME}}/state/nginx/dashboard-auth.conf;
 
     # Liveness for the container's healthcheck and for any external monitor.
     # Outside the account list on purpose: it proves nginx is up, nothing more.
