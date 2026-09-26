@@ -142,6 +142,26 @@ load_env() {
     export FLORA_URL_TOKENS="http://${FLORA_IP}:${FLORA_PUBLIC_TOKENS}"
   fi
 
+  # A NAT gateway, container port-forward or reverse proxy in front of this
+  # machine can translate ports (e.g. an external example.com:28001 forwarded
+  # to this machine's own 7083) -- FLORA_IP:FLORA_PUBLIC_* has no way to
+  # express that, since it assumes whatever port a service listens on here is
+  # also the port people type. These let the *advertised* URL differ from the
+  # port nginx actually binds, without touching what nginx itself listens on
+  # (nginx's own listen port is FLORA_PUBLIC_*, always -- only what gets
+  # written into links, Mattermost's SiteURL, etc. changes here).
+  : "${FLORA_URL_DASHBOARD_OVERRIDE:=}"
+  : "${FLORA_URL_HERMES_OVERRIDE:=}"
+  : "${FLORA_URL_OPENCODE_OVERRIDE:=}"
+  : "${FLORA_URL_CHAT_OVERRIDE:=}"
+  : "${FLORA_URL_TOKENS_OVERRIDE:=}"
+  [[ -n "$FLORA_URL_DASHBOARD_OVERRIDE" ]] && FLORA_URL_DASHBOARD="$FLORA_URL_DASHBOARD_OVERRIDE"
+  [[ -n "$FLORA_URL_HERMES_OVERRIDE" ]] && FLORA_URL_HERMES="$FLORA_URL_HERMES_OVERRIDE"
+  [[ -n "$FLORA_URL_OPENCODE_OVERRIDE" ]] && FLORA_URL_OPENCODE="$FLORA_URL_OPENCODE_OVERRIDE"
+  [[ -n "$FLORA_URL_CHAT_OVERRIDE" ]] && FLORA_URL_CHAT="$FLORA_URL_CHAT_OVERRIDE"
+  [[ -n "$FLORA_URL_TOKENS_OVERRIDE" ]] && FLORA_URL_TOKENS="$FLORA_URL_TOKENS_OVERRIDE"
+  export FLORA_URL_DASHBOARD FLORA_URL_HERMES FLORA_URL_OPENCODE FLORA_URL_CHAT FLORA_URL_TOKENS
+
   # --- 4. authentication ----------------------------------------------------
   # Exactly one account list decides who gets in. Both agents will gate
   # themselves if they find a password in the environment, and secrets/flora.env
@@ -429,6 +449,24 @@ record_external_installs() {
     log "Flora will not read, write or upgrade those. Its own state lives in state/."
   else
     skip "no pre-existing Hermes or OpenCode state outside Flora"
+  fi
+}
+
+# check_bind_safety -- refuse to proceed if the agent UIs would be reachable
+# directly, unauthenticated. FLORA_BIND_ADDR=0.0.0.0 (or any non-loopback
+# address) puts Hermes and OpenCode on every interface; FLORA_AUTH_MODE=nginx
+# unsets each backend's own password because it assumes nginx is the only way
+# in. Together that is an unauthenticated shell, network-reachable. Called
+# from render.sh (before anything is written) AND install-systemd.sh (before
+# anything is activated) -- both matter: a unit file staged by an older render
+# should not become live just because install-systemd.sh trusts state/systemd/.
+check_bind_safety() {
+  if [[ "$FLORA_BIND_ADDR" != "127.0.0.1" && "$FLORA_AUTH_MODE" != "backend" ]]; then
+    die "FLORA_BIND_ADDR=$FLORA_BIND_ADDR exposes the agent UIs directly, but
+     FLORA_AUTH_MODE=nginx only protects the nginx route. Anyone who reaches
+     port $FLORA_PORT_OPENCODE or $FLORA_PORT_HERMES would get an unauthenticated
+     shell on this machine. Set FLORA_AUTH_MODE=backend, or keep
+     FLORA_BIND_ADDR=127.0.0.1."
   fi
 }
 
