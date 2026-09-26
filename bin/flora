@@ -163,7 +163,14 @@ case "$cmd" in
       opencode)   f="$FLORA_STATE/logs/opencode.log" ;;
       nginx)
         if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
-          exec docker logs "${1:+--tail $1}" flora-nginx
+          # `docker logs` needs --tail and its count as separate argv entries;
+          # "${1:+--tail $1}" quoted them into one "--tail N" string instead,
+          # which docker rejected as an unknown flag, and never handled -f.
+          dargs=()
+          if [[ "${1:-}" == "-f" ]]; then dargs=(-f)
+          elif [[ -n "${1:-}" ]]; then dargs=(--tail "$1")
+          fi
+          exec docker logs "${dargs[@]}" flora-nginx
         fi
         f="$FLORA_STATE/logs/nginx-hermes.error.log" ;;
       mattermost) exec docker compose -f "$FLORA_STATE/mattermost/docker-compose.yml" logs "$@" ;;
