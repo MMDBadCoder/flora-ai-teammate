@@ -14,6 +14,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 load_env
 
 step "OpenCode"
+if [[ "${FLORA_ENABLE_OPENCODE:-true}" != "true" ]]; then
+  skip "OpenCode is disabled (FLORA_ENABLE_OPENCODE=false); not installing"
+  exit 0
+fi
 record_external_installs
 need_cmd npm "install Node.js 20+"
 

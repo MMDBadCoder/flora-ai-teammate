@@ -22,6 +22,10 @@ TOOLS_DIR="$FLORA_STATE/hermes/tools"          # uv, ripgrep, playwright, ...
 PRIVATE_BIN="$AGENT_DIR/.hermes/bin/hermes"
 
 step "Hermes"
+if [[ "${FLORA_ENABLE_HERMES:-true}" != "true" ]]; then
+  skip "Hermes is disabled (FLORA_ENABLE_HERMES=false); not installing"
+  exit 0
+fi
 record_external_installs
 
 ensure_dir "$HERMES_HOME"
