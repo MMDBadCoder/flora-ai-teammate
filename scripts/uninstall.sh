@@ -69,8 +69,15 @@ if has_systemd; then
     [[ -e "$f" ]] || continue
     rm -f "$f"; removed=$((removed+1))
   done
-  [[ "$removed" -gt 0 ]] && { systemctl daemon-reload; ok "removed $removed unit file(s)"; } \
-                         || skip "no unit files installed"
+  if [[ "$removed" -gt 0 ]]; then
+    systemctl daemon-reload
+    # A unit that was failing when it was removed lingers in the listing as
+    # "not-found failed" until its state is cleared, which looks like leftovers.
+    systemctl reset-failed 'flora*' 2>/dev/null || true
+    ok "removed $removed unit file(s)"
+  else
+    skip "no unit files installed"
+  fi
 else
   warn "no systemd here; stop any processes you started by hand"
 fi
