@@ -156,7 +156,7 @@ else
        address other than exactly this one gets a 400 'Invalid Host header'.
        Fix: set FLORA_IP in flora.env to that address, then:
        bin/flora render && bin/flora restart hermes gateway" ;;
-      200|401|403) ok "Hermes accepts requests addressed to $FLORA_IP" ;;
+      2??|3??|401|403) ok "Hermes accepts requests addressed to $FLORA_IP" ;;
       000) : ;; # not listening yet -- health.sh above already reported that
       *) warn "could not verify Hermes' Host-header check (got HTTP $hermes_code)" ;;
     esac

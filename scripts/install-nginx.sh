@@ -68,6 +68,16 @@ if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
   log "starting Flora's nginx"
   docker compose -f "$COMPOSE" up -d --remove-orphans
   ok "flora-nginx is up"
+  # `up -d` only recreates a container when the COMPOSE FILE itself changed --
+  # it has no idea that flora.conf/auth.conf, bind-mounted read-only into an
+  # already-running container, are different on disk now. Nginx re-reads
+  # auth_basic_user_file per request, so htpasswd changes just work, but any
+  # structural change (switching FLORA_AUTH_MODE, routing, a new vhost) sat
+  # there silently unapplied until something else happened to recreate the
+  # container. Force it, every time, so this script is actually idempotent.
+  if docker exec flora-nginx nginx -s reload >/dev/null 2>&1; then
+    ok "reloaded (picks up flora.conf/auth.conf even when the container itself did not need to restart)"
+  fi
   log "nothing was written to /etc/nginx; this nginx is Flora's own"
   print_urls
   exit 0

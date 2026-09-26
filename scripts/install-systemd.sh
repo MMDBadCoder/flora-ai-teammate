@@ -7,6 +7,7 @@ load_env
 need_root
 has_systemd || die "no systemd on this machine. See docs/09-troubleshooting.md for the
      docker-compose fallback that supervises the same four services."
+check_bind_safety
 
 step "systemd units"
 changed=0

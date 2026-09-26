@@ -10,6 +10,14 @@ load_env
 
 step "Render configuration"
 
+# Must run before anything is written. It used to run at the end of this
+# script, after the systemd unit files were already staged in state/systemd/
+# -- so a die() here still left a ready-to-install, unauthenticated-shell
+# config on disk for a subsequent `bin/flora systemd` (which does no
+# validation of its own) to happily activate. A render that refuses to
+# proceed should refuse before producing anything, not after.
+check_bind_safety
+
 T="$FLORA_HOME/config/templates"
 
 # --- directories ------------------------------------------------------------
@@ -98,15 +106,6 @@ for tmpl in "$T"/systemd/*.tmpl; do
   fi
   render "$tmpl" "$FLORA_STATE/systemd/$unit" 0644
 done
-
-# --- safety check on the bind address --------------------------------------
-if [[ "$FLORA_BIND_ADDR" != "127.0.0.1" && "$FLORA_AUTH_MODE" != "backend" ]]; then
-  die "FLORA_BIND_ADDR=$FLORA_BIND_ADDR exposes the agent UIs directly, but
-     FLORA_AUTH_MODE=nginx only protects the nginx route. Anyone who reaches
-     port $FLORA_PORT_OPENCODE or $FLORA_PORT_HERMES would get an unauthenticated
-     shell on this machine. Set FLORA_AUTH_MODE=backend, or keep
-     FLORA_BIND_ADDR=127.0.0.1."
-fi
 
 ensure_ownership
 
