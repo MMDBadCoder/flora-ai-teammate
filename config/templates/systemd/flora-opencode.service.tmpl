@@ -11,14 +11,15 @@ User={{FLORA_USER}}
 WorkingDirectory={{FLORA_HOME}}/workspace
 EnvironmentFile={{FLORA_HOME}}/flora.env
 EnvironmentFile=-{{FLORA_HOME}}/secrets/flora.env
-# BROWSER=true stops `opencode web` trying to launch a browser on a headless box.
-Environment=BROWSER=true
+# `opencode web` tries to xdg-open a browser even with BROWSER=true set (that
+# env var is not honoured by current builds), which crashes with "Executable
+# not found: xdg-open" on every headless start. `serve` renders the identical
+# web UI without ever trying to launch one, so it is the correct subcommand
+# here, not just a fallback for builds that lack `web`.
 # Exactly one authentication layer. With FLORA_AUTH_MODE=nginx this unsets
 # OpenCode's own password so it does not reject the credentials nginx forwards.
 {{FLORA_OPENCODE_AUTH_DIRECTIVE}}
-ExecStart={{FLORA_HOME}}/state/bin/opencode web --hostname {{FLORA_BIND_ADDR}} --port {{FLORA_PORT_OPENCODE}} --print-logs
-# If your opencode build has no `web` subcommand, swap the line above for:
-#   ExecStart={{FLORA_HOME}}/state/bin/opencode serve --hostname {{FLORA_BIND_ADDR}} --port {{FLORA_PORT_OPENCODE}}
+ExecStart={{FLORA_HOME}}/state/bin/opencode serve --hostname {{FLORA_BIND_ADDR}} --port {{FLORA_PORT_OPENCODE}} --print-logs
 Restart=always
 RestartSec=10
 TimeoutStopSec=30
