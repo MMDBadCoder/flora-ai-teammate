@@ -432,6 +432,29 @@ record_external_installs() {
   fi
 }
 
+# git_remote_sha <repo> <ref>  -- the commit SHA <ref> resolves to on <repo>,
+# without a local checkout. Used by anything comparing a deployed commit
+# against upstream (install-tokenring.sh, update.sh).
+#
+# An ANNOTATED tag (git tag -a -- what `gh release create` and most release
+# workflows produce) is its own object with its own SHA, distinct from the
+# commit it points at. ls-remote's plain "refs/tags/$REF" line gives the tag
+# object, not the commit, and comparing that against `git rev-parse HEAD`
+# would never match, wrongly claiming an update is always available. The
+# "^{}" (peeled) form is ls-remote's dereferenced commit; try that first and
+# only fall back to the direct lookup for lightweight tags, branches, or a
+# raw SHA.
+git_remote_sha() {
+  local repo="$1" ref="$2" out
+  out="$(git ls-remote "$repo" "refs/tags/$ref^{}" 2>/dev/null | awk '{print $1}')"
+  if [[ -z "$out" ]]; then
+    out="$(git ls-remote "$repo" "$ref" "refs/tags/$ref" "refs/heads/$ref" 2>/dev/null | head -1 | awk '{print $1}')"
+  fi
+  # A ref that resolves to nothing is probably already a raw commit SHA.
+  [[ -z "$out" && "$ref" =~ ^[0-9a-f]{7,40}$ ]] && out="$ref"
+  echo "$out"
+}
+
 is_external_known() {
   local f="$FLORA_HOME/$EXTERNAL_LIST_REL"
   [[ -f "$f" ]] && grep -qxF "$1" "$f"

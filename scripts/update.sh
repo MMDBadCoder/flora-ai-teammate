@@ -34,8 +34,7 @@ if want tokenring; then
   ref="${FLORA_TOKENRING_REF:-main}"
   if [[ -d "$src/.git" ]]; then
     have="$(git -C "$src" rev-parse HEAD 2>/dev/null || echo '?')" || true
-    up="$(git ls-remote "${FLORA_TOKENRING_REPO:-https://github.com/MMDBadCoder/tokenring.git}" \
-          "$ref" "refs/tags/$ref" 2>/dev/null | head -1 | awk '{print $1}' || true)"
+    up="$(git_remote_sha "${FLORA_TOKENRING_REPO:-https://github.com/MMDBadCoder/tokenring.git}" "$ref" || true)"
     if [[ -z "$up" ]]; then row tokenring "${have:0:8} ($ref)" "unreachable" "cannot reach the remote"
     elif [[ "$have" == "$up" ]]; then row tokenring "${have:0:8} ($ref)" "${up:0:8}" "current"
     else row tokenring "${have:0:8} ($ref)" "${up:0:8}" "UPDATE"; pending=$((pending+1)); fi

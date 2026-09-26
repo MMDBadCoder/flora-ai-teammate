@@ -30,24 +30,8 @@ need_cmd npm "install Node.js 20.11+"
 ensure_dir "$FLORA_STATE/tokenring/data" 0700
 
 # What does upstream have for this ref? One network call, no checkout needed.
-remote_sha() {
-  local out
-  # An ANNOTATED tag (git tag -a, what `gh release create` and most release
-  # workflows use) is its own object with its own SHA, distinct from the commit
-  # it points at -- ls-remote's plain "refs/tags/$REF" line gives the tag
-  # object, not the commit, and comparing that against `git rev-parse HEAD`
-  # would never match, so every check would wrongly claim an update is
-  # available. The "^{}" (peeled) form is ls-remote's dereferenced commit; try
-  # that first and only fall back to the direct lookup for lightweight tags,
-  # branches, or a raw SHA.
-  out="$(git ls-remote "$REPO" "refs/tags/$REF^{}" 2>/dev/null | awk '{print $1}')"
-  if [[ -z "$out" ]]; then
-    out="$(git ls-remote "$REPO" "$REF" "refs/tags/$REF" "refs/heads/$REF" 2>/dev/null | head -1 | awk '{print $1}')"
-  fi
-  # A ref that resolves to nothing is probably already a raw commit SHA.
-  [[ -z "$out" && "$REF" =~ ^[0-9a-f]{7,40}$ ]] && out="$REF"
-  echo "$out"
-}
+# See common.sh's git_remote_sha for why this isn't a plain ls-remote.
+remote_sha() { git_remote_sha "$REPO" "$REF"; }
 
 build() {
   log "installing dependencies (this takes a minute)"
