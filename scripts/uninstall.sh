@@ -130,7 +130,7 @@ if [[ "$PURGE" == "1" ]]; then
     ok "emptied ./workspace"
   fi
   rm -f "$FLORA_HOME/flora.env"; ok "deleted ./flora.env"
-  rm -f "$FLORA_HOME/web/dashboard/index.html" "$FLORA_HOME/web/dashboard/health.json" 2>/dev/null || true
+
 fi
 
 step "Done"

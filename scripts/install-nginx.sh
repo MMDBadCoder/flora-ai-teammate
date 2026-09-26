@@ -26,7 +26,7 @@ while [[ "$p" != "/" ]]; do
   fi
   p="$(dirname "$p")"
 done
-chmod -R a+rX "$FLORA_HOME/web/dashboard"
+chmod -R a+rX "$FLORA_STATE/dashboard"
 for d in "$FLORA_STATE/dashboard" "$FLORA_STATE/logs" "$FLORA_STATE/nginx"; do
   ensure_dir "$d"; chmod a+rx "$d"
 done
@@ -59,7 +59,7 @@ if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
         -v /dev/null:/etc/nginx/conf.d/default.conf:ro \
         -v "$SRC:/etc/nginx/conf.d/flora.conf:ro" \
         -v "$FLORA_STATE/nginx:$FLORA_STATE/nginx:ro" \
-        -v "$FLORA_HOME/web/dashboard:$FLORA_HOME/web/dashboard:ro" \
+        
         -v "$FLORA_STATE/dashboard:$FLORA_STATE/dashboard:ro" \
         -v "$FLORA_STATE/logs:$FLORA_STATE/logs:rw" \
         nginx:1.27-alpine nginx -t 2>&1 | sed 's/^/    /'; then

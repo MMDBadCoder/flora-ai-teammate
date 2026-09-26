@@ -34,9 +34,6 @@
 /workspace/*
 !/workspace/.gitkeep
 
-# Generated dashboard health data.
-/web/dashboard/health.json
-
 # Editors / OS noise.
 *.swp
 *~

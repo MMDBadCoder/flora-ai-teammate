@@ -17,7 +17,29 @@ if [[ -f "$FLORA_HOME/secrets/flora.env" ]]; then
   [[ "$(stat -c %a "$FLORA_HOME/secrets/flora.env")" == "600" ]] && ok "secrets/flora.env is 0600" || bad "secrets/flora.env should be 0600"
 fi
 
-step "2. Nothing escaped the directory"
+step "2. The repository tracks no live data"
+# The rule that keeps `git pull` working on a running platform: anything Flora
+# writes must be invisible to git. This caught shared/ and a generated dashboard;
+# it exists so the next one is caught before a user hits it.
+if [[ -d "$FLORA_HOME/.git" ]]; then
+  leaked="$(git -C "$FLORA_HOME" ls-files -- shared state secrets flora.env 2>/dev/null || true)"
+  if [[ -n "$leaked" ]]; then
+    bad "these live-data paths are TRACKED by git and will collide with a pull:
+$(sed 's/^/         /' <<< "$leaked" | head -10)
+       Fix: git rm -r --cached <path>, and add it to .gitignore"
+  else
+    ok "no live data is tracked by the repository"
+  fi
+  dirty="$(git -C "$FLORA_HOME" status --porcelain 2>/dev/null | grep -v '^??' || true)"
+  if [[ -n "$dirty" ]]; then
+    warn "the checkout has uncommitted changes, which will block git pull --rebase:
+$(sed 's/^/         /' <<< "$dirty" | head -6)"
+  else
+    ok "checkout is clean; git pull will run"
+  fi
+fi
+
+step "3. Nothing escaped the directory"
 # Flora's own state must all be under FLORA_HOME. Agent directories that were
 # already on this machine before Flora was installed are recorded in
 # state/external-installs.txt and are left alone -- they belong to whoever was
@@ -49,7 +71,7 @@ for shim in "$HOME"/.local/bin/hermes "$HOME"/.local/bin/hermes-acp "$HOME"/.loc
   esac
 done
 
-step "3. Binaries"
+step "4. Binaries"
 [[ -x "$FLORA_STATE/bin/hermes" ]] && ok "hermes wrapper" || bad "missing state/bin/hermes (run: bin/flora render)"
 [[ -x "$FLORA_STATE/bin/opencode" ]] && ok "opencode wrapper" || bad "missing state/bin/opencode"
 "$FLORA_STATE/bin/hermes" --version >/dev/null 2>&1 && ok "hermes: $("$FLORA_STATE/bin/hermes" --version 2>&1 | head -1)" \
@@ -62,7 +84,7 @@ else
   bad "tokenring not built (scripts/install-tokenring.sh)"
 fi
 
-step "4. Configuration"
+step "5. Configuration"
 # New releases add settings. Missing ones fall back to a built-in default, so
 # nothing breaks -- but it is worth knowing which knobs you have not seen.
 if [[ -f "$FLORA_HOME/flora.env" && -f "$FLORA_HOME/flora.env.example" ]]; then
@@ -94,13 +116,13 @@ key="$(secret_get flora.env FLORA_TOKENRING_KEY || true)"
   && warn "MATTERMOST_ALLOWED_USERS is empty -- Flora will ignore everyone in chat" \
   || ok "Mattermost allow-list is set"
 
-step "5. Services"
+step "6. Services"
 "$FLORA_HOME/scripts/health.sh" || true
 
-step "6. Skills"
+step "7. Skills"
 "$FLORA_HOME/scripts/skills-sync.sh" --check || bad "the skill tree has drifted (run: bin/flora skills sync)"
 
-step "7. Routing"
+step "8. Routing"
 if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx flora-nginx; then
     ok "flora-nginx container is running (nothing written to /etc/nginx)"

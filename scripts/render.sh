@@ -53,7 +53,10 @@ render "$T/tokenring/env.tmpl" "$FLORA_STATE/tokenring/tokenring.env" 0600
 render "$T/mattermost/docker-compose.yml.tmpl" "$FLORA_STATE/mattermost/docker-compose.yml" 0644
 
 # --- dashboard --------------------------------------------------------------
-render "$T/dashboard.html.tmpl" "$FLORA_HOME/web/dashboard/index.html" 0644
+# Generated, therefore under state/: a generated file in the repository shows up
+# as an uncommitted change on every machine whose settings differ, and then blocks
+# the next git pull.
+render "$T/dashboard.html.tmpl" "$FLORA_STATE/dashboard/index.html" 0644
 
 # --- nginx ------------------------------------------------------------------
 case "${FLORA_ROUTING:-ports}" in

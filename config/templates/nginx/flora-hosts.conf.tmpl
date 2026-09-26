@@ -33,7 +33,7 @@ server {
     access_log {{FLORA_HOME}}/state/logs/nginx-dashboard.access.log flora;
     error_log  {{FLORA_HOME}}/state/logs/nginx-dashboard.error.log warn;
 
-    root {{FLORA_HOME}}/web/dashboard;
+    root {{FLORA_HOME}}/state/dashboard;
     index index.html;
 
     include {{FLORA_HOME}}/state/nginx/auth.conf;
@@ -48,7 +48,6 @@ server {
     }
 
     location = /health.json {
-        alias {{FLORA_HOME}}/state/dashboard/health.json;
         add_header Cache-Control "no-store";
         default_type application/json;
     }

@@ -40,7 +40,6 @@ services:
       # Mounted at their real paths, because the generated config refers to them
       # by absolute path and that same file has to work under a host nginx too.
       - {{FLORA_HOME}}/state/nginx:{{FLORA_HOME}}/state/nginx:ro
-      - {{FLORA_HOME}}/web/dashboard:{{FLORA_HOME}}/web/dashboard:ro
       - {{FLORA_HOME}}/state/dashboard:{{FLORA_HOME}}/state/dashboard:ro
       - {{FLORA_HOME}}/state/logs:{{FLORA_HOME}}/state/logs:rw
     healthcheck:

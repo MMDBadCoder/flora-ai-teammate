@@ -3,7 +3,7 @@
 # dashboard reads.
 #
 #   health.sh                      human-readable table
-#   health.sh --json <file>        write a snapshot for web/dashboard
+#   health.sh --json <file>        write a snapshot for the dashboard to read
 #
 # A service is "up" only when it answers HTTP. A running-but-wedged process
 # still reports down here, which is the point.
