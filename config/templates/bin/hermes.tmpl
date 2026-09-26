@@ -33,6 +33,15 @@ set -a
 [ -f "$FLORA_HOME/secrets/flora.env" ] && . "$FLORA_HOME/secrets/flora.env"
 set +a
 
+# Exactly one authentication layer. This wrapper re-exports everything in
+# secrets/flora.env, which would otherwise hand the backend its own password and
+# undo the unit's UnsetEnvironment -- so the backend gate is dropped here, where
+# both the systemd units and an interactive `bin/flora opencode` go through.
+# With FLORA_AUTH_MODE=backend the passwords stay, and nginx does not gate.
+if [ "${FLORA_AUTH_MODE:-nginx}" = "nginx" ]; then
+  unset OPENCODE_SERVER_PASSWORD OPENCODE_SERVER_USERNAME
+fi
+
 PRIVATE_BIN="$HERMES_INSTALL_DIR/.hermes/bin/hermes"
 if [ -x "$PRIVATE_BIN" ]; then
   exec "$PRIVATE_BIN" "$@"

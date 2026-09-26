@@ -27,6 +27,27 @@ that is worth knowing before you hand out passwords.
 | Mattermost `:7083` | real accounts, sessions, optional MFA | Mattermost's own database | the first account created |
 | TokenRing `:7084` | one shared dashboard password | its SQLite database | anyone with the password |
 
+## Hermes asks twice, and that is expected
+
+Hermes' dashboard has authentication of its own — a login page with a cookie
+session — and it enforces it on its `/api` routes even when it is bound to
+loopback. There is no way to turn that off and keep the dashboard working: with
+no auth provider configured, the page loads and then cannot reach its own
+backend.
+
+So Hermes keeps its own login, and the team account list sits in front of it. On
+a first visit in a fresh browser you are asked twice:
+
+1. **your own team account** — checked by nginx
+2. **Hermes' login** — username `flora`, password from `bin/flora creds`
+
+The second is once per browser session, not once per page. OpenCode has no
+equivalent gate, so it asks once.
+
+This is a genuine wart, not a design choice. If it bothers you, the cleaner exit
+is Hermes' own OIDC support: point it at an identity provider and drop the nginx
+layer for that one vhost.
+
 ## The agent UIs
 
 Hermes and OpenCode were built to run on a laptop. Neither has per-user

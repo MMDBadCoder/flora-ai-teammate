@@ -13,6 +13,9 @@ EnvironmentFile={{FLORA_HOME}}/flora.env
 EnvironmentFile=-{{FLORA_HOME}}/secrets/flora.env
 # BROWSER=true stops `opencode web` trying to launch a browser on a headless box.
 Environment=BROWSER=true
+# Exactly one authentication layer. With FLORA_AUTH_MODE=nginx this unsets
+# OpenCode's own password so it does not reject the credentials nginx forwards.
+{{FLORA_OPENCODE_AUTH_DIRECTIVE}}
 ExecStart={{FLORA_HOME}}/state/bin/opencode web --hostname {{FLORA_BIND_ADDR}} --port {{FLORA_PORT_OPENCODE}} --print-logs
 # If your opencode build has no `web` subcommand, swap the line above for:
 #   ExecStart={{FLORA_HOME}}/state/bin/opencode serve --hostname {{FLORA_BIND_ADDR}} --port {{FLORA_PORT_OPENCODE}}

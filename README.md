@@ -92,5 +92,7 @@ bin/flora skills new <name>      # teach her something
 bin/flora creds                  # every login and link, in one place
 bin/flora update                 # what is deployed vs available upstream
 bin/flora doctor                 # what is wrong?
+bin/flora network                # why can't other machines reach it?
+bin/flora upgrade                # move onto the code you just pulled, keeping data
 bin/flora uninstall              # remove the system integration (--purge wipes data)
 ```

@@ -53,10 +53,12 @@ load_env() {
     source "$s"
   done
   set +a
-  # Defaults for every key that might be missing, because a flora.env written
-  # against an older version of Flora must keep working after a pull. Without
-  # this, adding one variable to the template breaks every command in the
+
+  # --- 1. defaults ----------------------------------------------------------
+  # A flora.env written against an older version of Flora must keep working
+  # after a pull. Without these, adding one setting breaks every command in the
   # platform with "unbound variable" for anyone who upgrades.
+  : "${FLORA_DOMAIN:=flora.local}"
   : "${FLORA_ROUTING:=ports}"
   : "${FLORA_NGINX:=docker}"
   : "${FLORA_PUBLIC_DASHBOARD:=7080}"
@@ -68,15 +70,15 @@ load_env() {
   : "${FLORA_BIND_ADDR:=127.0.0.1}"
   : "${FLORA_AUTH_MODE:=nginx}"
   : "${FLORA_ADMIN_USER:=admin}"
-  : "${FLORA_ADMIN_EMAIL:=admin@${FLORA_DOMAIN:-flora.local}}"
+  : "${FLORA_ADMIN_EMAIL:=admin@${FLORA_DOMAIN}}"
   : "${FLORA_USER:=root}"
   : "${FLORA_TZ:=UTC}"
   : "${FLORA_IP:=127.0.0.1}"
-  : "${FLORA_HOST_DASHBOARD:=${FLORA_DOMAIN:-flora.local}}"
-  : "${FLORA_HOST_HERMES:=hermes.${FLORA_DOMAIN:-flora.local}}"
-  : "${FLORA_HOST_OPENCODE:=opencode.${FLORA_DOMAIN:-flora.local}}"
-  : "${FLORA_HOST_CHAT:=chat.${FLORA_DOMAIN:-flora.local}}"
-  : "${FLORA_HOST_TOKENS:=tokens.${FLORA_DOMAIN:-flora.local}}"
+  : "${FLORA_HOST_DASHBOARD:=${FLORA_DOMAIN}}"
+  : "${FLORA_HOST_HERMES:=hermes.${FLORA_DOMAIN}}"
+  : "${FLORA_HOST_OPENCODE:=opencode.${FLORA_DOMAIN}}"
+  : "${FLORA_HOST_CHAT:=chat.${FLORA_DOMAIN}}"
+  : "${FLORA_HOST_TOKENS:=tokens.${FLORA_DOMAIN}}"
   : "${FLORA_PORT_TOKENRING:=4000}"
   : "${FLORA_PORT_HERMES:=9119}"
   : "${FLORA_PORT_OPENCODE:=4096}"
@@ -86,54 +88,78 @@ load_env() {
   : "${FLORA_TOKENRING_UPSTREAM:=https://api.openai.com/v1}"
   : "${FLORA_HERMES_SKILL_CATEGORY:=team}"
   : "${FLORA_SKILLS_EXPORT_BUNDLED:=false}"
+  : "${FLORA_HERMES_BROWSER:=false}"
   : "${FLORA_LOG_KEEP_DAYS:=30}"
   : "${FLORA_SESSION_KEEP_DAYS:=90}"
   : "${FLORA_ENABLE_TOKENRING:=true}"
   : "${FLORA_ENABLE_HERMES:=true}"
   : "${FLORA_ENABLE_OPENCODE:=true}"
   : "${FLORA_ENABLE_MATTERMOST:=true}"
-  export FLORA_ROUTING FLORA_NGINX FLORA_PUBLIC_DASHBOARD FLORA_PUBLIC_HERMES \
-         FLORA_PUBLIC_OPENCODE FLORA_PUBLIC_CHAT FLORA_PUBLIC_TOKENS FLORA_HTTP_PORT \
-         FLORA_BIND_ADDR FLORA_AUTH_MODE FLORA_ADMIN_USER FLORA_ADMIN_EMAIL FLORA_USER \
-         FLORA_TZ FLORA_IP FLORA_HOST_DASHBOARD FLORA_HOST_HERMES FLORA_HOST_OPENCODE \
-         FLORA_HOST_CHAT FLORA_HOST_TOKENS FLORA_PORT_TOKENRING FLORA_PORT_HERMES \
-         FLORA_PORT_OPENCODE FLORA_PORT_MATTERMOST FLORA_MODEL_MAIN FLORA_MODEL_SMALL \
-         FLORA_TOKENRING_UPSTREAM FLORA_HERMES_SKILL_CATEGORY FLORA_SKILLS_EXPORT_BUNDLED \
-         FLORA_LOG_KEEP_DAYS FLORA_SESSION_KEEP_DAYS FLORA_ENABLE_TOKENRING \
-         FLORA_ENABLE_HERMES FLORA_ENABLE_OPENCODE FLORA_ENABLE_MATTERMOST
+  export FLORA_DOMAIN FLORA_ROUTING FLORA_NGINX FLORA_PUBLIC_DASHBOARD \
+         FLORA_PUBLIC_HERMES FLORA_PUBLIC_OPENCODE FLORA_PUBLIC_CHAT \
+         FLORA_PUBLIC_TOKENS FLORA_HTTP_PORT FLORA_BIND_ADDR FLORA_AUTH_MODE \
+         FLORA_ADMIN_USER FLORA_ADMIN_EMAIL FLORA_USER FLORA_TZ FLORA_IP \
+         FLORA_HOST_DASHBOARD FLORA_HOST_HERMES FLORA_HOST_OPENCODE \
+         FLORA_HOST_CHAT FLORA_HOST_TOKENS FLORA_PORT_TOKENRING \
+         FLORA_PORT_HERMES FLORA_PORT_OPENCODE FLORA_PORT_MATTERMOST \
+         FLORA_MODEL_MAIN FLORA_MODEL_SMALL FLORA_TOKENRING_UPSTREAM \
+         FLORA_HERMES_SKILL_CATEGORY FLORA_SKILLS_EXPORT_BUNDLED \
+         FLORA_HERMES_BROWSER FLORA_LOG_KEEP_DAYS FLORA_SESSION_KEEP_DAYS \
+         FLORA_ENABLE_TOKENRING FLORA_ENABLE_HERMES FLORA_ENABLE_OPENCODE \
+         FLORA_ENABLE_MATTERMOST
 
-  # FLORA_HOME is defined by where these scripts live, so a stale value in
-  # flora.env (after a move or a copy) can never send the platform somewhere
-  # that does not exist. The detected path always wins.
+  # --- 2. paths -------------------------------------------------------------
+  # FLORA_HOME is where these scripts live, so a stale value in flora.env (after
+  # a move or a copy) can never send the platform somewhere that does not exist.
   FLORA_HOME="$detected_home"
   export FLORA_HOME
-  : "${FLORA_DOMAIN:?set FLORA_DOMAIN in flora.env}"
   export FLORA_STATE="$FLORA_HOME/state"
   export FLORA_SHARED="$FLORA_HOME/shared"
   export HERMES_HOME="$FLORA_STATE/hermes/home"
   export OPENCODE_CONFIG_DIR="$FLORA_STATE/opencode/config"
   export FLORA_BIN_DIR="$FLORA_STATE/bin"
-  # Every printed or linked URL needs the port unless it is the default 80,
-  # so it is computed once here instead of in five different places.
-  if [[ "${FLORA_HTTP_PORT:-80}" == "80" ]]; then export FLORA_URL_PORT=""
-  else export FLORA_URL_PORT=":$FLORA_HTTP_PORT"; fi
 
-  # Every URL Flora prints or links to is derived here, so the addressing mode
-  # is decided in exactly one place instead of in each script and template.
-  if [[ "${FLORA_ROUTING:-ports}" == "hosts" ]]; then
+  # --- 3. URLs --------------------------------------------------------------
+  # Derived in one place so the addressing mode is decided once, not in every
+  # script and template.
+  if [[ "$FLORA_HTTP_PORT" == "80" ]]; then export FLORA_URL_PORT=""
+  else export FLORA_URL_PORT=":$FLORA_HTTP_PORT"; fi
+  if [[ "$FLORA_ROUTING" == "hosts" ]]; then
     export FLORA_URL_DASHBOARD="http://${FLORA_HOST_DASHBOARD}${FLORA_URL_PORT}"
     export FLORA_URL_HERMES="http://${FLORA_HOST_HERMES}${FLORA_URL_PORT}"
     export FLORA_URL_OPENCODE="http://${FLORA_HOST_OPENCODE}${FLORA_URL_PORT}"
     export FLORA_URL_CHAT="http://${FLORA_HOST_CHAT}${FLORA_URL_PORT}"
     export FLORA_URL_TOKENS="http://${FLORA_HOST_TOKENS}${FLORA_URL_PORT}"
   else
-    local h="${FLORA_IP:-127.0.0.1}"
-    export FLORA_URL_DASHBOARD="http://${h}:${FLORA_PUBLIC_DASHBOARD}"
-    export FLORA_URL_HERMES="http://${h}:${FLORA_PUBLIC_HERMES}"
-    export FLORA_URL_OPENCODE="http://${h}:${FLORA_PUBLIC_OPENCODE}"
-    export FLORA_URL_CHAT="http://${h}:${FLORA_PUBLIC_CHAT}"
-    export FLORA_URL_TOKENS="http://${h}:${FLORA_PUBLIC_TOKENS}"
+    export FLORA_URL_DASHBOARD="http://${FLORA_IP}:${FLORA_PUBLIC_DASHBOARD}"
+    export FLORA_URL_HERMES="http://${FLORA_IP}:${FLORA_PUBLIC_HERMES}"
+    export FLORA_URL_OPENCODE="http://${FLORA_IP}:${FLORA_PUBLIC_OPENCODE}"
+    export FLORA_URL_CHAT="http://${FLORA_IP}:${FLORA_PUBLIC_CHAT}"
+    export FLORA_URL_TOKENS="http://${FLORA_IP}:${FLORA_PUBLIC_TOKENS}"
   fi
+
+  # --- 4. authentication ----------------------------------------------------
+  # Exactly one account list decides who gets in. Both agents will gate
+  # themselves if they find a password in the environment, and secrets/flora.env
+  # reaches them through the units, so in nginx mode the browser's credentials
+  # would arrive at a backend expecting a different password and every request
+  # would 401. Two lists with two passwords is not defence in depth.
+  if [[ "$FLORA_AUTH_MODE" == "nginx" ]]; then
+    # OpenCode has no separate API gate, so simply dropping its password is enough.
+    export FLORA_OPENCODE_AUTH_DIRECTIVE="UnsetEnvironment=OPENCODE_SERVER_PASSWORD OPENCODE_SERVER_USERNAME"
+    # Hermes is different: it gates its own /api routes even on a loopback bind,
+    # and it does so with a cookie session from its own login page, not with a
+    # header on every request. So it keeps its own single login, and the nginx
+    # gate sits in front of it. A team member sees two prompts on their first
+    # visit: their own account, then Hermes' login, once per browser session.
+    export FLORA_HERMES_DASHBOARD_USER="flora"
+    export FLORA_HERMES_DASHBOARD_PW="${HERMES_DASHBOARD_PASSWORD:-}"
+  else
+    export FLORA_OPENCODE_AUTH_DIRECTIVE="Environment=OPENCODE_SERVER_USERNAME=${FLORA_ADMIN_USER}"
+    export FLORA_HERMES_DASHBOARD_USER="${FLORA_ADMIN_USER}"
+    export FLORA_HERMES_DASHBOARD_PW="${HERMES_DASHBOARD_PASSWORD:-}"
+  fi
+  export FLORA_HERMES_PUBLIC_URL_LINE="HERMES_DASHBOARD_PUBLIC_URL=${FLORA_URL_HERMES}"
 }
 
 # --- idempotent primitives -------------------------------------------------
@@ -257,9 +283,27 @@ ensure_symlink() {
 # render <template> <output> [mode]
 # Substitutes {{VAR}} with the value of $VAR from the environment.
 # An unset variable is a hard error: a half-rendered config is worse than none.
+# render() keeps a hash of what it last wrote. If the file on disk no longer
+# matches, somebody edited it by hand, and overwriting that silently is how a
+# tuned config disappears during an upgrade. The edit is saved beside the file
+# and named in the output instead.
 render() {
-  local tmpl="$1" out="$2" mode="${3:-0644}" tmp
+  local tmpl="$1" out="$2" mode="${3:-0644}" tmp hashfile
   [[ -f "$tmpl" ]] || die "template not found: $tmpl"
+  hashfile="$FLORA_HOME/state/.rendered/$(printf '%s' "$out" | sha256sum | cut -c1-32)"
+  if [[ -f "$out" && -f "$hashfile" ]]; then
+    local now was
+    now="$(sha256sum "$out" | cut -d" " -f1)"
+    was="$(cat "$hashfile")"
+    if [[ "$now" != "$was" ]]; then
+      local keep="$out.local-$(date +%Y%m%d-%H%M%S)"
+      cp -p "$out" "$keep"
+      warn "$out was edited by hand since it was generated.
+       Your version is kept at:  ${keep/#$FLORA_HOME/.}
+       The generated one is being written over it. To make an edit permanent,
+       put it in the template: ${tmpl/#$FLORA_HOME/.}"
+    fi
+  fi
   tmp="$(mktemp)"
   if ! FLORA_TMPL="$tmpl" python3 "$FLORA_HOME/scripts/lib/render.py" > "$tmp"; then
     rm -f "$tmp"
@@ -267,6 +311,8 @@ render() {
   fi
   write_if_changed "$out" "$mode" < "$tmp"
   rm -f "$tmp"
+  ensure_dir "$(dirname "$hashfile")" >/dev/null
+  sha256sum "$out" | cut -d" " -f1 > "$hashfile"
 }
 
 # --- secrets ---------------------------------------------------------------

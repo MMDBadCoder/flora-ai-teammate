@@ -11,6 +11,8 @@ User={{FLORA_USER}}
 WorkingDirectory={{FLORA_HOME}}/workspace
 EnvironmentFile={{FLORA_HOME}}/flora.env
 EnvironmentFile=-{{FLORA_HOME}}/secrets/flora.env
+# Hermes reads its dashboard credentials from state/hermes/home/.env, which
+# bin/flora render writes according to FLORA_AUTH_MODE.
 ExecStart={{FLORA_HOME}}/state/bin/hermes dashboard --host {{FLORA_BIND_ADDR}} --port {{FLORA_PORT_HERMES}} --no-open
 Restart=always
 RestartSec=10

@@ -151,6 +151,26 @@ serving, nothing more. It is what the container healthcheck uses.
 | 403 on the dashboard | nginx cannot traverse into the directory | `sudo bin/flora nginx` (it fixes the `o+x` bits) |
 | Endless password prompt | wrong account, or no account file | `bin/flora user list`, `bin/flora user add <name>` |
 
+## Asked for a password twice, or OpenCode returns 401 with the right one
+
+Two different symptoms, one root cause: how many things are checking credentials.
+
+- **Hermes asking twice is correct.** The first prompt is your team account; the
+  second is Hermes' own login page (`flora` + the password in `bin/flora creds`),
+  which it enforces on its API and which cannot be switched off. Once per browser
+  session. See [05-accounts-and-auth.md](05-accounts-and-auth.md).
+- **OpenCode rejecting a correct password** means it has a password of its own as
+  well, and is refusing the one nginx forwarded. `FLORA_AUTH_MODE=nginx` is
+  supposed to strip it:
+
+  ```bash
+  bin/flora render && sudo bin/flora systemd && bin/flora restart opencode
+  curl -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4096/   # want 200, not 401
+  ```
+
+  A 401 there means `OPENCODE_SERVER_PASSWORD` is still reaching it. Check that
+  `state/bin/opencode` contains the `unset` block, which is where it is dropped.
+
 ## A service will not stay up
 
 ```bash

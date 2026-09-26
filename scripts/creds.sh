@@ -34,6 +34,14 @@ else
   printf '  opencode  opencode / %s\n' "$(secret_get flora.env OPENCODE_SERVER_PASSWORD || echo '?')"
 fi
 
+if [[ "$FLORA_AUTH_MODE" == "nginx" ]]; then
+  printf '\n%sHermes has a second login of its own%s  %s\n' "$_c_bold" "$_c_reset" "$FLORA_URL_HERMES"
+  printf '  Its dashboard runs its own session login behind the account list above,\n'
+  printf '  so the first visit in a browser asks twice. Once per session after that.\n'
+  printf '  username  %s\n' "${FLORA_HERMES_DASHBOARD_USER:-flora}"
+  printf '  password  %s\n' "$(secret_get flora.env HERMES_DASHBOARD_PASSWORD || echo '(not generated yet)')"
+fi
+
 printf '\n%sTokenRing%s  %s\n' "$_c_bold" "$_c_reset" "$FLORA_URL_TOKENS"
 printf '  password  %s\n' "$ring_pw"
 printf '            (no username; change it in Settings, which signs everyone out)\n'

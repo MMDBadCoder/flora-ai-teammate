@@ -26,6 +26,7 @@ flora -- the Flora AI teammate platform
     hosts [--print]      write /etc/hosts here; print the line for clients
     systemd              install and enable the units                 (root)
     bootstrap            full first-time setup: all of the above, in order
+    upgrade              move a running Flora onto the code you just pulled
     uninstall [--purge]  remove the system integration; --purge deletes data too
 
   RUNNING
@@ -49,6 +50,7 @@ flora -- the Flora AI teammate platform
     sync                 full sync: configs, instructions, MCP servers, skills
 
   CARE
+    network              why other machines cannot reach Flora, and the fix
     update [--apply]     what is deployed vs available upstream
     doctor               full diagnostic sweep
     housekeep            rotate logs, prune sessions, vacuum databases
@@ -124,6 +126,7 @@ case "$cmd" in
     echo
     log "Send the team: $FLORA_URL_DASHBOARD  (credentials: bin/flora creds)" ;;
 
+  upgrade)    load_env; "$S/upgrade.sh" "$@" ;;
   uninstall)  load_env; need_root; "$S/uninstall.sh" "$@" ;;
   render)     load_env; "$S/render.sh" ;;
   nginx)      load_env; "$S/install-nginx.sh" ;;
@@ -194,6 +197,7 @@ case "$cmd" in
 
   sync)    load_env; "$S/agents-sync.sh" ;;
   update)  load_env; "$S/update.sh" "$@" ;;
+  network) load_env; "$S/network.sh" ;;
   doctor)  load_env; "$S/doctor.sh" ;;
   health)  load_env; "$S/health.sh" "$@" ;;
   housekeep) load_env; "$S/housekeeping.sh" ;;
