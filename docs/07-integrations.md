@@ -26,9 +26,11 @@ The Hermes gateway holds a websocket to Mattermost and answers as a bot.
 | Channel | `@flora` mention | per thread |
 | Thread | replies in a thread she is in | isolated |
 
-`MATTERMOST_REPLY_MODE=thread` keeps her answers threaded instead of flooding
-the channel. `group_sessions_per_user` keeps two people's context apart in a
-shared channel.
+`MATTERMOST_REPLY_MODE` controls threading: `thread` nests her answers instead
+of flooding the channel; `off` (Flora's default) posts them directly, top-level.
+Change it in `config/templates/hermes/env.tmpl`, then
+`bin/flora render && bin/flora restart gateway`.
+`group_sessions_per_user` keeps two people's context apart in a shared channel.
 
 **She is ignoring me.** In order: is her ID in `MATTERMOST_ALLOWED_USERS`
 (empty means nobody); is the bot in the channel; `bin/flora logs gateway -f`.
