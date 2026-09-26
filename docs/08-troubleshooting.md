@@ -382,6 +382,46 @@ Either run the `ExecStart` lines from `state/systemd/*.service` under any
 supervisor (supervisord, runit, tmux in a pinch), or wrap them in a compose file
 of your own. Everything else — render, sync, health, housekeeping — works unchanged.
 
+## Preflight blocks on disk, but you know it actually fits
+
+`15G free` is a working-minimum floor with real margin built in for logs,
+sessions and npm/pip caches over time — not the size of a fresh install.
+Measured on a real box: TokenRing + OpenCode + Mattermost's bind mounts
+together land under 1.5G; Hermes' own Python runtime and tool store is the
+single largest piece, at roughly 2.5G. A small VPS or a disk-constrained VM
+can genuinely run all five services on well under 15G free, especially before
+sessions and logs accumulate — preflight has no way to know that in advance,
+so it blocks on the number that is safe to promise everyone.
+
+`sudo ./bin/flora bootstrap` runs preflight itself and stops there. If you have
+verified your box can actually fit it, run the same steps individually instead
+— they are exactly what bootstrap runs, in the same order, and every one of
+them is safe to re-run on its own (see the table in
+[02-install.md](02-install.md#2-bootstrap--automated)):
+
+```bash
+./scripts/bootstrap-secrets.sh && ./scripts/render.sh
+./scripts/install-tokenring.sh
+./scripts/install-hermes.sh          # skip this one if it's what doesn't fit
+./scripts/install-opencode.sh
+sudo ./scripts/install-mattermost.sh
+sudo ./bin/flora fix-perms && ./scripts/render.sh && ./scripts/skills-sync.sh
+sudo ./scripts/install-hosts.sh
+sudo ./scripts/install-nginx.sh
+sudo ./scripts/install-systemd.sh
+sudo ./bin/flora up
+```
+
+Skipping `install-hermes.sh` specifically still gets you TokenRing, OpenCode,
+Mattermost and the dashboard — three of four services, all fully working;
+`FLORA_ENABLE_HERMES=false` in flora.env keeps her systemd units disabled so
+they don't crash-loop trying to run a binary that was never installed.
+Install her later, on more disk, with `bin/flora install hermes` alone.
+
+Watch free space while `install-hermes.sh` runs if you are close to the edge
+(`watch -n5 df -h .` in another terminal) — it is the one step whose actual
+footprint can matter on a genuinely tight box.
+
 ## Starting over on one service
 
 ```bash

@@ -121,7 +121,21 @@ Prefer `http://hermes.flora.com` to a port number? Set `FLORA_ROUTING=hosts` and
 see [01-architecture.md](01-architecture.md#the-alternative-hostnames) — it
 works, but it needs an `/etc/hosts` line on every machine that browses it.
 
-## 2. Bootstrap
+## What's automated and what's yours to do
+
+| | Who does it | How |
+|---|---|---|
+| §2 Bootstrap | **`bin/flora`, fully automated** | installs and starts all four services |
+| §3 Finish TokenRing | **you, in TokenRing's own web UI** | Flora cannot add your provider keys for you — there is no supported way to do that except through its dashboard |
+| §4 Finish Mattermost | **you, in Mattermost's own web UI** | same reason: issuing a bot token has no scriptable interface |
+| §6 Verify | **`bin/flora doctor`, fully automated** | confirms what you did in §3/§4 actually works — it never performs those steps itself |
+
+§3 and §4 are not gaps to be scripted around later. See
+[01-architecture.md](01-architecture.md#a-design-rule-official-interfaces-only-never-internals)
+for why Flora deliberately stops at the edge of what each product's own
+interface actually supports.
+
+## 2. Bootstrap — automated
 
 ```bash
 sudo ./bin/flora bootstrap
@@ -145,7 +159,7 @@ That runs, in order, and each step is safe to re-run on its own:
 
 At the end it starts `flora.target` and prints what is still missing.
 
-## 3. Finish TokenRing
+## 3. Finish TokenRing -- manual, in TokenRing's own UI
 
 Open **http://&lt;your ip&gt;:7084** — `bin/flora creds` prints the exact link.
 
@@ -168,7 +182,7 @@ bin/flora tokenring key sk-ring-xxxxxxxxxxxx
 That writes it to `secrets/flora.env`, re-renders both agent configs and
 restarts them. Both now authenticate to the pool with that key.
 
-## 4. Finish Mattermost
+## 4. Finish Mattermost -- manual, in Mattermost's own UI
 
 Open **http://&lt;your ip&gt;:7083**.
 
@@ -213,7 +227,7 @@ used to reach it, so the same page works over the LAN, a VPN or `localhost`.
 (If you chose `FLORA_ROUTING=hosts` instead, this is where each of them needs
 the `/etc/hosts` line from `bin/flora hosts --print`.)
 
-## 6. Verify
+## 6. Verify -- automated
 
 ```bash
 bin/flora doctor

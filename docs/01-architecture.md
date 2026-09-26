@@ -1,5 +1,31 @@
 # Architecture
 
+## A design rule: official interfaces only, never internals
+
+Flora installs and configures Hermes, OpenCode, Mattermost and TokenRing
+exclusively through the interface each one publishes for exactly that purpose:
+Hermes' own official installer script, OpenCode's published npm package,
+Mattermost's official Docker image driven by its documented `MM_*` environment
+variables, TokenRing's own REST API (the same one its dashboard calls). Nothing
+here reads another project's source to learn an undocumented behavior and
+depends on it, patches a vendored file, or drives a private/internal endpoint
+not meant for scripted use. That is deliberate: an internal detail can change
+in any release without notice, and code depending on it breaks silently,
+whereas a documented interface is the one contract each project actually
+commits to keeping stable.
+
+The corollary: **when a step has no official, scriptable interface, Flora does
+not script it.** Issuing a Mattermost bot token and wiring up TokenRing's first
+provider and upstream keys are exactly this — there is no supported
+non-interactive way to do either, so [02-install.md](02-install.md) has you do
+them yourself, through each product's own web UI, and Flora's role is limited
+to storing what you produce (`bin/flora tokenring key`, `bin/flora secrets
+edit`) and then verifying health and connectivity (`bin/flora doctor`) — never
+attempting the configuration itself by another route. If you ever find a
+script here reasoning about *why* something behaves a certain way in Hermes,
+OpenCode or Mattermost rather than just calling their documented interface and
+checking the result, that is a bug in this repository, not a feature.
+
 ## The four long-running services
 
 | # | Service | What it is | You browse | Backend | Supervised by |

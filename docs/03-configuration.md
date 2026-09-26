@@ -47,6 +47,7 @@ half-finished config.
 | `FLORA_PUBLIC_TOKENS` | `7084` | |
 | `FLORA_HOST_*` | `*.flora.com` | only read when `FLORA_ROUTING=hosts` |
 | `FLORA_HTTP_PORT` | `80` | only read when `FLORA_ROUTING=hosts` |
+| `FLORA_URL_{DASHBOARD,HERMES,OPENCODE,CHAT,TOKENS}_OVERRIDE` | empty | the *advertised* URL for one service, when a NAT gateway, container port-forward or reverse proxy makes it different from `FLORA_IP:FLORA_PUBLIC_*` (nginx's own listen port is unaffected either way) |
 
 Changing a public port: `bin/flora render && sudo bin/flora nginx`. Changing a
 hostname additionally means editing every teammate's `/etc/hosts`.
