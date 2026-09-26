@@ -71,7 +71,11 @@ load_env() {
   : "${FLORA_AUTH_MODE:=nginx}"
   : "${FLORA_ADMIN_USER:=admin}"
   : "${FLORA_ADMIN_EMAIL:=admin@${FLORA_DOMAIN}}"
-  : "${FLORA_USER:=root}"
+  # The account that owns the tree and runs the services. Under sudo this is the
+  # person who invoked it, not root: a platform whose files belong to root cannot
+  # be operated by the human who installed it, and every later `flora render`
+  # fails with "permission denied".
+  : "${FLORA_USER:=${SUDO_USER:-$(id -un)}}"
   : "${FLORA_TZ:=UTC}"
   : "${FLORA_IP:=127.0.0.1}"
   : "${FLORA_HOST_DASHBOARD:=${FLORA_DOMAIN}}"
@@ -189,7 +193,13 @@ write_if_changed() {
     FLORA_CHANGED=0; return 0
   fi
   ensure_dir "$(dirname "$target")"
-  mv "$tmp" "$target"
+  if ! mv "$tmp" "$target" 2>/dev/null; then
+    rm -f "$tmp"
+    local owner; owner="$(stat -c %U "$target" 2>/dev/null || echo unknown)"
+    die "cannot write $target -- it is owned by '$owner' and you are '$(id -un)'.
+     This happens when an earlier step ran under sudo. Hand the tree back:
+       sudo $FLORA_HOME/bin/flora fix-perms"
+  fi
   chmod "$mode" "$target"
   ok "wrote $target"
   FLORA_CHANGED=1; return 0
@@ -235,6 +245,35 @@ ensure_block() {
   chmod 0644 "$file"
   ok "updated $file block '$marker' (backup: $file.flora.bak)"
   FLORA_CHANGED=1; return 0
+}
+
+# ensure_ownership -- hand the tree back to FLORA_USER.
+#
+# Some steps need root (systemd units, /etc/nginx in host mode), and anything
+# they create is root-owned. Left that way, the next `flora render` run by the
+# person who installed it cannot write, so the whole platform becomes
+# sudo-only. This is called at the end of the steps that write, and is a no-op
+# when not running as root.
+ensure_ownership() {
+  [[ "$(id -u)" -eq 0 ]] || return 0
+  local owner="${FLORA_USER:-root}"
+  id -u "$owner" >/dev/null 2>&1 || { warn "FLORA_USER=$owner does not exist; leaving ownership alone"; return 0; }
+  [[ "$owner" == "root" ]] && return 0
+  local group; group="$(id -gn "$owner")"
+  local changed=0 d
+  for d in "$FLORA_HOME/state" "$FLORA_HOME/shared" "$FLORA_HOME/secrets" "$FLORA_HOME/flora.env"; do
+    [[ -e "$d" ]] || continue
+    # Mattermost's bind mounts must stay uid 2000 or the container cannot start.
+    if [[ "$d" == "$FLORA_HOME/state" ]]; then
+      find "$d" -path "$d/mattermost" -prune -o ! -user "$owner" -print0 2>/dev/null \
+        | xargs -0 --no-run-if-empty chown -h "$owner:$group" && changed=1
+    else
+      chown -R -h "$owner:$group" "$d" && changed=1
+    fi
+  done
+  chmod 0700 "$FLORA_HOME/secrets" 2>/dev/null || true
+  [[ "$changed" == 1 ]] && ok "tree owned by $owner:$group (Mattermost mounts left at uid 2000)"
+  return 0
 }
 
 # remove_block <file> <marker>  -- the inverse of ensure_block
@@ -311,8 +350,13 @@ render() {
   fi
   write_if_changed "$out" "$mode" < "$tmp"
   rm -f "$tmp"
-  ensure_dir "$(dirname "$hashfile")" >/dev/null
-  sha256sum "$out" | cut -d" " -f1 > "$hashfile"
+  # The hash record is an aid, not a requirement: if it cannot be written the
+  # render still succeeded, so this warns rather than aborting.
+  if ! ( ensure_dir "$(dirname "$hashfile")" >/dev/null && \
+         sha256sum "$out" | cut -d" " -f1 > "$hashfile" ) 2>/dev/null; then
+    warn "could not record a checksum for $out (hand-edit detection is off for it).
+       Usually an ownership problem after a sudo step:  sudo bin/flora fix-perms"
+  fi
 }
 
 # --- secrets ---------------------------------------------------------------
@@ -374,31 +418,6 @@ record_external_installs() {
   else
     skip "no pre-existing Hermes or OpenCode state outside Flora"
   fi
-}
-
-# Hermes drops 2-line exec shims into ~/.local/bin. Reading one tells you which
-# install it belongs to, which is the only way to know whether it is safe to
-# delete: a shim pointing inside FLORA_HOME was left by an earlier, non-isolated
-# Flora run; one pointing anywhere else belongs to whoever installed Hermes for
-# themselves. Prints: flora | external | unknown
-classify_shim() {
-  local shim="$1" target
-  [[ -e "$shim" ]] || { echo missing; return; }
-  target="$(readlink -f "$shim" 2>/dev/null || true)"
-  # A shim is usually a script, not a symlink; pull the path out of the exec line.
-  if [[ ! -x "$target" || "$target" == "$shim" ]]; then
-    target="$(grep -oE '(/[^ "]+)+/\.hermes/bin/[a-z-]+' "$shim" 2>/dev/null | head -1 || true)"
-  fi
-  [[ -z "$target" ]] && { echo unknown; return; }
-  case "$target" in
-    "$FLORA_HOME"/*) echo flora ;;
-    *)               echo external ;;
-  esac
-}
-
-shim_target() {
-  grep -oE '(/[^ "]+)+/\.hermes/bin/[a-z-]+' "$1" 2>/dev/null | head -1 \
-    || readlink -f "$1" 2>/dev/null || true
 }
 
 is_external_known() {

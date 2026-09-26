@@ -35,4 +35,5 @@ systemctl enable flora.target >/dev/null 2>&1 && ok "enabled flora.target"
 for t in $(flora_timers) flora-skills-sync.path; do
   systemctl enable --now "$t" >/dev/null 2>&1 && ok "enabled $t" || warn "could not enable $t"
 done
+ensure_ownership
 ok "units installed"

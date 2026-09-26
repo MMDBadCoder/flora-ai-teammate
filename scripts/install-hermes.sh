@@ -45,59 +45,6 @@ if [[ -x "$PRIVATE_BIN" ]]; then
   exit 0
 fi
 
-# --------------------------------- cleaning up an earlier, non-isolated install --
-# Before isolation, the installer was run with only HERMES_HOME set, so the
-# agent landed at $HERMES_HOME/hermes-agent and the shims went into the
-# operator's ~/.local/bin. Anything left from that is removed here: it is a
-# re-downloadable checkout, and leaving it costs a couple of gigabytes and a
-# `hermes` on PATH that quietly is not the one Flora runs.
-# The old layout put both the checkout and the tool store under HERMES_HOME.
-for legacy in "$HERMES_HOME/hermes-agent" "$HERMES_HOME/tools"; do
-  [[ -d "$legacy" ]] || continue
-  warn "found an earlier, non-isolated install at ${legacy/#$FLORA_HOME/.} ($(du -sh "$legacy" 2>/dev/null | cut -f1))"
-  log "removing it; the private install below replaces it"
-  rm -rf "$legacy"
-  ok "removed ${legacy/#$FLORA_HOME/.}"
-done
-# ~/.local/bin/hermes may be the operator's own install or the leftover of an
-# earlier Flora run. The shim says which, so read it rather than guess.
-for shim in "$HOME"/.local/bin/hermes "$HOME"/.local/bin/hermes-acp "$HOME"/.local/bin/hermes-agent; do
-  [[ -e "$shim" ]] || continue
-  case "$(classify_shim "$shim")" in
-    flora)
-      warn "$shim was left by an earlier Flora run.
-       It points at:  $(shim_target "$shim")
-       Flora does not use it -- it runs state/bin/hermes. Safe to delete:
-         rm -f $shim"
-      ;;
-    external)
-      skip "$shim belongs to your own Hermes ($(shim_target "$shim")); left alone"
-      ;;
-    *)
-      warn "$shim exists and I cannot tell which install it belongs to.
-       Check it with:  cat $shim"
-      ;;
-  esac
-done
-# A failed interactive run can leave a user unit behind, pointing at a binary
-# that is about to be replaced.
-for unit in "$HOME"/.config/systemd/user/hermes-gateway-*.service; do
-  [[ -e "$unit" ]] || continue
-  warn "an earlier run left a systemd user unit: $unit
-       Flora supervises its own gateway (flora-hermes-gateway.service). Remove it:
-         rm -f $unit"
-done
-
-# --------------------------------------------- migrating off a shared binary --
-old_bin="$(secret_get flora.env FLORA_HERMES_BIN 2>/dev/null || true)"
-if [[ -n "$old_bin" && "$old_bin" != "$FLORA_HOME"* ]]; then
-  warn "Flora was using a Hermes binary outside its tree:
-       $old_bin
-     Installing a private copy now. The other install is left exactly as it is,
-     and Flora's sessions and skills in state/hermes/home are unaffected."
-  sed -i '/^FLORA_HERMES_BIN=/d' "$FLORA_HOME/secrets/flora.env"
-fi
-
 # ------------------------------------------------------------------ install --
 need_cmd curl "apt install curl"
 need_cmd git "apt install git"

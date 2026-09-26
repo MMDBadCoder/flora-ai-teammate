@@ -32,7 +32,7 @@ half-finished config.
 | `FLORA_DOMAIN` | `flora.com` | Suffix for all hostnames |
 | `FLORA_IP` | detected | The address people type. Baked into Mattermost's `SiteURL` and Hermes' public URL, so a change needs `bin/flora render && bin/flora restart` |
 | `FLORA_TZ` | `UTC` | Mattermost and the timers use it |
-| `FLORA_USER` | `root` | The account the units run as |
+| `FLORA_USER` | the invoking user | Owns the tree and runs the units. Under `sudo` this is `$SUDO_USER`, so the platform is not left root-only. `sudo bin/flora fix-perms` re-applies it |
 
 ### Addressing
 

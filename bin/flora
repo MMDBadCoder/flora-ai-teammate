@@ -23,7 +23,7 @@ flora -- the Flora AI teammate platform
     install [what]       install or update software (all|hermes|opencode|tokenring|mattermost)
     render               regenerate every config from config/templates/
     seed [--diff]        install shipped defaults into shared/ without overwriting
-    migrate-shared       one-time: move a tracked shared/ out of git's way
+    fix-perms            hand the tree back to FLORA_USER after a sudo step
     nginx                install the vhosts and reload nginx          (root)
     hosts [--print]      write /etc/hosts here; print the line for clients
     systemd              install and enable the units                 (root)
@@ -115,6 +115,7 @@ case "$cmd" in
     "$S/install-nginx.sh"
     "$S/install-systemd.sh"
     sd start flora.target || true
+    ensure_ownership
     echo
     step "Flora is up"
     "$S/health.sh" || true
@@ -132,7 +133,7 @@ case "$cmd" in
   uninstall)  load_env; need_root; "$S/uninstall.sh" "$@" ;;
   render)     load_env; "$S/render.sh" ;;
   seed)       load_env; "$S/seed.sh" "$@" ;;
-  migrate-shared) load_env; "$S/migrate-shared.sh" ;;
+  fix-perms)  load_env; need_root; ensure_ownership; ok "done -- run bin/flora render as $FLORA_USER" ;;
   nginx)      load_env; "$S/install-nginx.sh" ;;
   hosts)      load_env; "$S/install-hosts.sh" "$@" ;;
   systemd)    load_env; "$S/install-systemd.sh" ;;

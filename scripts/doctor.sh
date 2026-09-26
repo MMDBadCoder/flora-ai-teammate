@@ -60,17 +60,6 @@ while IFS= read -r stray; do
   fi
 done < <(external_paths)
 
-# Shims Flora may have left in the operator's PATH during an earlier, less
-# isolated install. Harmless, but they are a `hermes` that is not Flora's.
-for shim in "$HOME"/.local/bin/hermes "$HOME"/.local/bin/hermes-acp "$HOME"/.local/bin/hermes-agent; do
-  [[ -e "$shim" ]] || continue
-  case "$(classify_shim "$shim")" in
-    flora)    warn "$shim points into the Flora tree ($(shim_target "$shim")).
-       Left by an earlier install. Flora uses state/bin/hermes; delete it:  rm -f $shim" ;;
-    external) skip "$shim is your own Hermes, not Flora's" ;;
-  esac
-done
-
 step "4. Binaries"
 [[ -x "$FLORA_STATE/bin/hermes" ]] && ok "hermes wrapper" || bad "missing state/bin/hermes (run: bin/flora render)"
 [[ -x "$FLORA_STATE/bin/opencode" ]] && ok "opencode wrapper" || bad "missing state/bin/opencode"

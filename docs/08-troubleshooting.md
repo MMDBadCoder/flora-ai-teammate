@@ -97,25 +97,41 @@ own `.bashrc`.
 
 ## `git pull` says "cannot pull with rebase: You have unstaged changes"
 
-If the changes are in `shared/`, this is the one-time migration: `shared/` used
-to be tracked and is now live data that the repository ignores. Your edits are
-not lost.
+The repository tracks code only. If `git diff` shows something under `shared/`,
+`state/`, `secrets/` or a generated file, the checkout predates that rule:
 
 ```bash
-cp -a shared shared.mine          # your data, safe
-git checkout -- shared/           # discard the tracked copies; yours are aside
+cp -a shared shared.mine          # your skills, safe
+git checkout -- .                 # discard the tracked copies
 git pull --rebase origin main
-bin/flora migrate-shared          # seeds the defaults, copies yours back on top
-rm -rf shared.mine                # once you are happy
+bin/flora seed                    # recreate shared/ from the shipped defaults
+cp -a shared.mine/. shared/       # your versions back on top
+bin/flora skills sync && rm -rf shared.mine
 ```
 
-Verified against a checkout with all three kinds of local change — an edited
-shipped skill, a brand new skill, and an edited `SOUL.md` — all three survive.
+After that, `git pull` never touches Flora's data again, and
+`bin/flora doctor` fails if any live-data path becomes tracked.
 
-After this, `git pull` never touches Flora's data again.
+If the changes are somewhere else, they are genuinely yours: `git status` says
+where, and `git stash` / `git stash pop` around the pull is the usual answer.
 
-If the changes are somewhere else, they are yours: `git status` will say where,
-and `git stash` then `git stash pop` around the pull is the usual answer.
+## "Permission denied" writing into state/
+
+```
+mv: cannot move '/tmp/tmp.XXXX' to '.../state/bin/hermes': Permission denied
+```
+
+An earlier step ran under `sudo`, so those files belong to root, and now you are
+not root. Hand the tree back:
+
+```bash
+sudo bin/flora fix-perms
+bin/flora render
+```
+
+`FLORA_USER` decides who owns it, and defaults to whoever invoked the command --
+`$SUDO_USER` under sudo, so `sudo bin/flora bootstrap` leaves the tree owned by
+you, not root. Mattermost's own mounts stay at uid 2000, which its image requires.
 
 ## The server's address changed
 

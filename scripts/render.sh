@@ -108,5 +108,7 @@ if [[ "$FLORA_BIND_ADDR" != "127.0.0.1" && "$FLORA_AUTH_MODE" != "backend" ]]; t
      FLORA_BIND_ADDR=127.0.0.1."
 fi
 
+ensure_ownership
+
 echo
 ok "configuration rendered into state/"
