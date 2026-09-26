@@ -30,7 +30,7 @@ half-finished config.
 |---|---|---|
 | `FLORA_HOME` | *derived* | Not set in the file — it is wherever the scripts live |
 | `FLORA_DOMAIN` | `flora.com` | Suffix for all hostnames |
-| `FLORA_IP` | detected | What clients put in `/etc/hosts` |
+| `FLORA_IP` | detected | The address people type. Baked into Mattermost's `SiteURL` and Hermes' public URL, so a change needs `bin/flora render && bin/flora restart` |
 | `FLORA_TZ` | `UTC` | Mattermost and the timers use it |
 | `FLORA_USER` | `root` | The account the units run as |
 

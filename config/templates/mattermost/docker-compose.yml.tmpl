@@ -48,8 +48,10 @@ services:
       MM_SQLSETTINGS_DRIVERNAME: postgres
       MM_SQLSETTINGS_DATASOURCE: "postgres://mmuser:{{MATTERMOST_DB_PASSWORD}}@postgres:5432/mattermost?sslmode=disable&connect_timeout=10"
       MM_BLEVESETTINGS_INDEXDIR: /mattermost/bleve-indexes
-      # Must match what the browser types, or websockets and OAuth break.
-      MM_SERVICESETTINGS_SITEURL: http://{{FLORA_HOST_CHAT}}
+      # Must match what the browser types, or websockets break and live messages
+      # stop arriving. Derived from the addressing mode, so it is the port URL in
+      # ports mode and the hostname in hosts mode -- and it follows FLORA_IP.
+      MM_SERVICESETTINGS_SITEURL: {{FLORA_URL_CHAT}}
       MM_SERVICESETTINGS_ENABLELOCALMODE: "true"
       MM_SERVICESETTINGS_LOCALMODESOCKETLOCATION: /var/tmp/mattermost_local.socket
       # Flora's gateway logs in as a bot account, so bot accounts must be on.

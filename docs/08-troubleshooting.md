@@ -95,6 +95,25 @@ installer with `HOME` pointed at `state/hermes/fs-home`, so the shims land at
 `state/hermes/fs-home/.local/bin/` and the PATH lines go into that directory's
 own `.bashrc`.
 
+## The server's address changed
+
+`FLORA_IP` is not only cosmetic: it is baked into Mattermost's `SiteURL` and
+Hermes' public URL, and Mattermost stops delivering messages live if its
+`SiteURL` is not what the browser actually used.
+
+```bash
+$EDITOR flora.env            # FLORA_IP=<the new address>
+bin/flora render
+bin/flora restart            # Mattermost and Hermes read it at startup
+bin/flora creds              # confirm the links
+```
+
+No reinstall, and no `bin/flora upgrade` — that command is for moving onto newer
+platform code, not for a settings change.
+
+The dashboard itself does not care: it rebuilds its links from whatever host the
+browser used, so it keeps working at the new address even before you re-render.
+
 ## Running on WSL
 
 Everything works, but **systemd is not on by default**, and without it nothing
