@@ -141,7 +141,7 @@ case "$cmd" in
 
   up)
     load_env
-    if [[ $# -eq 0 ]]; then sd start flora.target; else sd start $(units_from_args "$@"); fi
+    if [[ $# -eq 0 ]]; then sd start flora.target $(flora_units); else sd start $(units_from_args "$@"); fi
     sleep 2; "$S/health.sh" ;;
   down)
     load_env
