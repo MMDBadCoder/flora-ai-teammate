@@ -59,7 +59,6 @@ if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
         -v /dev/null:/etc/nginx/conf.d/default.conf:ro \
         -v "$SRC:/etc/nginx/conf.d/flora.conf:ro" \
         -v "$FLORA_STATE/nginx:$FLORA_STATE/nginx:ro" \
-        
         -v "$FLORA_STATE/dashboard:$FLORA_STATE/dashboard:ro" \
         -v "$FLORA_STATE/logs:$FLORA_STATE/logs:rw" \
         nginx:1.27-alpine nginx -t 2>&1 | sed 's/^/    /'; then

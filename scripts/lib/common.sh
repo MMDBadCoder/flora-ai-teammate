@@ -164,6 +164,18 @@ load_env() {
     export FLORA_HERMES_DASHBOARD_PW="${HERMES_DASHBOARD_PASSWORD:-}"
   fi
   export FLORA_HERMES_PUBLIC_URL_LINE="HERMES_DASHBOARD_PUBLIC_URL=${FLORA_URL_HERMES}"
+
+  # --- 5. OpenCode's model map ------------------------------------------------
+  # A plain {{FLORA_MODEL_MAIN}}/{{FLORA_MODEL_SMALL}} pair of JSON object keys
+  # silently collapses to one entry when both point at the same model id (a
+  # perfectly reasonable choice for a cost-conscious pool) -- JSON just keeps
+  # the last of two duplicate keys, so the first label disappears with no
+  # error. Computed here, once, the way FLORA_OPENCODE_AUTH_DIRECTIVE is.
+  if [[ "$FLORA_MODEL_MAIN" == "$FLORA_MODEL_SMALL" ]]; then
+    export FLORA_OPENCODE_MODELS_JSON="{ \"${FLORA_MODEL_MAIN}\": { \"name\": \"Flora\" } }"
+  else
+    export FLORA_OPENCODE_MODELS_JSON="{ \"${FLORA_MODEL_MAIN}\": { \"name\": \"Flora main\" }, \"${FLORA_MODEL_SMALL}\": { \"name\": \"Flora small\" } }"
+  fi
 }
 
 # --- idempotent primitives -------------------------------------------------
@@ -428,7 +440,7 @@ is_external_known() {
 # --- misc ------------------------------------------------------------------
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1 ($2)"; }
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
-need_root() { [[ "$(id -u)" -eq 0 ]] || die "this step needs root (it touches /etc or systemd)"; }
+need_root() { [[ "$(id -u)" -eq 0 ]] || die "this step needs root (${1:-it touches /etc or systemd})"; }
 
 port_free() { ! ss -ltn 2>/dev/null | awk '{print $4}' | grep -qE "[:.]$1\$"; }
 
