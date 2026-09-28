@@ -87,6 +87,15 @@ load_env() {
   : "${FLORA_PORT_HERMES:=9119}"
   : "${FLORA_PORT_OPENCODE:=4096}"
   : "${FLORA_PORT_MATTERMOST:=8065}"
+  : "${FLORA_PORT_SCRIBE:=8100}"
+  : "${FLORA_PUBLIC_SCRIBE:=7085}"
+  : "${FLORA_HOST_SCRIBE:=scribe.${FLORA_DOMAIN}}"
+  : "${FLORA_ENABLE_SCRIBE:=false}"
+  : "${FLORA_SCRIBE_REF:=0.2.0}"
+  : "${FLORA_SCRIBE_REPO:=https://github.com/MMDBadCoder/voice-2-text.git}"
+  : "${FLORA_SCRIBE_ASR_BACKEND:=stub}"
+  : "${FLORA_SCRIBE_WORKERS:=1}"
+  : "${FLORA_SCRIBE_CPU_THREADS:=2}"
   : "${FLORA_MODEL_MAIN:=gpt-5.1}"
   : "${FLORA_MODEL_SMALL:=gpt-5.1-mini}"
   : "${FLORA_TOKENRING_UPSTREAM:=https://api.openai.com/v1}"
@@ -110,7 +119,9 @@ load_env() {
          FLORA_HERMES_SKILL_CATEGORY FLORA_SKILLS_EXPORT_BUNDLED \
          FLORA_HERMES_BROWSER FLORA_LOG_KEEP_DAYS FLORA_SESSION_KEEP_DAYS \
          FLORA_ENABLE_TOKENRING FLORA_ENABLE_HERMES FLORA_ENABLE_OPENCODE \
-         FLORA_ENABLE_MATTERMOST
+         FLORA_ENABLE_MATTERMOST FLORA_PORT_SCRIBE FLORA_PUBLIC_SCRIBE \
+         FLORA_HOST_SCRIBE FLORA_ENABLE_SCRIBE FLORA_SCRIBE_REF FLORA_SCRIBE_REPO \
+         FLORA_SCRIBE_ASR_BACKEND FLORA_SCRIBE_WORKERS FLORA_SCRIBE_CPU_THREADS
 
   # --- 2. paths -------------------------------------------------------------
   # FLORA_HOME is where these scripts live, so a stale value in flora.env (after
@@ -135,7 +146,7 @@ load_env() {
   # Host check and Mattermost's SiteURL end up pointing at an address that does
   # not route.
   local svc host_var port_var url
-  for svc in DASHBOARD HERMES OPENCODE CHAT TOKENS; do
+  for svc in DASHBOARD HERMES OPENCODE CHAT TOKENS SCRIBE; do
     host_var="FLORA_HOST_$svc"; port_var="FLORA_PUBLIC_$svc"
     if [[ "$(flora_route_mode "$svc")" == "subdomain" ]]; then
       url="http://${!host_var}${FLORA_URL_PORT}"
@@ -529,6 +540,8 @@ sd() { has_systemd || { warn "systemd unavailable; skipped: systemctl $*"; retur
 flora_units() {
   local u=(flora-tokenring.service flora-hermes-dashboard.service
            flora-hermes-gateway.service flora-opencode.service flora-mattermost.service)
+  # Optional modules are only units when they are switched on.
+  [[ "${FLORA_ENABLE_SCRIBE:-false}" == "true" ]] && u+=(flora-scribe.service)
   # Flora's own nginx is a service like any other; a host nginx is not hers to manage.
   [[ "${FLORA_NGINX:-docker}" == "docker" ]] && u+=(flora-nginx.service)
   printf '%s\n' "${u[@]}"

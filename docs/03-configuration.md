@@ -102,6 +102,10 @@ both agents.
 | `FLORA_SESSION_KEEP_DAYS` | `90` | |
 | `FLORA_HOUSEKEEP_DOCKER` | `false` | Global Docker pruning. Leave off on a shared box |
 | `FLORA_ENABLE_*` | `true` | Per-service on/off, honoured by `install-systemd.sh` |
+| `FLORA_ENABLE_SCRIBE` | `false` | Optional transcription module; off contributes nothing anywhere |
+| `FLORA_SCRIBE_REF` | `0.2.0` | Which upstream release to build |
+| `FLORA_SCRIBE_ASR_BACKEND` | `stub` | `stub` (fabricated text, no model) or `faster_whisper` |
+| `FLORA_SCRIBE_WORKERS` / `_CPU_THREADS` | `1` / `2` | Pool size; product should stay at or below cores − 1 |
 
 ### Versions
 

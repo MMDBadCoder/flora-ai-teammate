@@ -27,6 +27,10 @@ runtimes so she never knows something in one place and not the other.
                    skills · instructions · MCP
 ```
 
+Optional modules plug in the same way — **Scribe**, offline Persian meeting
+transcription, is one `FLORA_ENABLE_SCRIBE=true` away and contributes nothing
+when off.
+
 No DNS and no `/etc/hosts`: every service is reached by address and port, and
 the dashboard links to the rest. nginx runs in Flora's own container, so nothing
 is written to `/etc/nginx` and the machine does not need nginx installed.

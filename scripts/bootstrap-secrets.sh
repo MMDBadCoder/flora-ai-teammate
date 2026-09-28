@@ -34,6 +34,11 @@ secret_set flora.env CONFLUENCE_URL ""
 secret_set flora.env CONFLUENCE_USER ""
 secret_set flora.env CONFLUENCE_TOKEN ""
 
+# Scribe's first administrator, created on its first start. Blank means no
+# bootstrap admin and you register through its own UI instead.
+secret_set flora.env SCRIBE_ADMIN_PHONE ""
+secret_set flora.env SCRIBE_ADMIN_PASSWORD ""
+
 chmod 0600 "$FLORA_HOME/secrets/flora.env"
 ok "secrets/flora.env ready (mode 0600, git-ignored)"
 echo

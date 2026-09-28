@@ -32,6 +32,11 @@ SERVICES=(
   "mattermost|flora-mattermost.service|http://127.0.0.1:${FLORA_PORT_MATTERMOST}|/api/v4/system/ping|${FLORA_URL_CHAT}"
   "gateway|flora-hermes-gateway.service|||${FLORA_URL_CHAT}"
 )
+# Optional modules are only probed when they are switched on, so a disabled one
+# does not permanently report "down".
+[[ "${FLORA_ENABLE_SCRIBE:-false}" == "true" ]] && SERVICES+=(
+  "scribe|flora-scribe.service|http://127.0.0.1:${FLORA_PORT_SCRIBE}|/|${FLORA_URL_SCRIBE}"
+)
 
 json_out=""
 [[ "${1:-}" == "--json" ]] && json_out="${2:?usage: health.sh --json <file>}"

@@ -15,8 +15,8 @@ APPLY=0; ONLY=""
 for a in "$@"; do
   case "$a" in
     --apply) APPLY=1 ;;
-    tokenring|hermes|opencode|mattermost) ONLY="$a" ;;
-    *) die "usage: update.sh [--apply] [tokenring|hermes|opencode|mattermost]" ;;
+    tokenring|hermes|opencode|mattermost|scribe) ONLY="$a" ;;
+    *) die "usage: update.sh [--apply] [tokenring|hermes|opencode|mattermost|scribe]" ;;
   esac
 done
 want() { [[ -z "$ONLY" || "$ONLY" == "$1" ]]; }
@@ -73,6 +73,21 @@ if want opencode; then
   fi
 fi
 
+# --- Scribe: a pinned upstream release, built from source -------------------
+if want scribe; then
+  if [[ "${FLORA_ENABLE_SCRIBE:-false}" != "true" ]]; then
+    row scribe "disabled" "-" "FLORA_ENABLE_SCRIBE=false"
+  elif [[ -d "$FLORA_STATE/scribe/src/.git" ]]; then
+    have="$(git -C "$FLORA_STATE/scribe/src" rev-parse HEAD 2>/dev/null || echo '?')" || true
+    up="$(git_remote_sha "$FLORA_SCRIBE_REPO" "$FLORA_SCRIBE_REF" 2>/dev/null || true)"
+    if [[ -z "$up" ]]; then row scribe "${have:0:8} ($FLORA_SCRIBE_REF)" "unreachable" "cannot reach the remote"
+    elif [[ "$have" == "$up" ]]; then row scribe "${have:0:8} ($FLORA_SCRIBE_REF)" "${up:0:8}" "current"
+    else row scribe "${have:0:8} ($FLORA_SCRIBE_REF)" "${up:0:8}" "UPDATE"; pending=$((pending+1)); fi
+  else
+    row scribe "not installed" "-" "run: bin/flora install scribe"
+  fi
+fi
+
 # --- Mattermost: a pinned image tag ----------------------------------------
 if want mattermost; then
   tag="$(grep -oP 'mattermost-team-edition:\K[\w.-]+' \
@@ -102,6 +117,9 @@ failed=0
 want tokenring && { "$FLORA_HOME/scripts/install-tokenring.sh" || { err "TokenRing update failed"; failed=1; }; }
 want hermes    && { "$FLORA_HOME/scripts/install-hermes.sh"    || { err "Hermes update failed";    failed=1; }; }
 want opencode  && { "$FLORA_HOME/scripts/install-opencode.sh"  || { err "OpenCode update failed";  failed=1; }; }
+if want scribe && [[ "${FLORA_ENABLE_SCRIBE:-false}" == "true" ]]; then
+  "$FLORA_HOME/scripts/install-scribe.sh" || { err "Scribe update failed"; failed=1; }
+fi
 if want mattermost; then
   docker compose -f "$FLORA_STATE/mattermost/docker-compose.yml" pull
   ok "images pulled; they take effect on the next restart"

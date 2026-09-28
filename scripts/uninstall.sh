@@ -28,7 +28,7 @@ echo "  systemd     $(flora_units | tr '\n' ' ')"
 echo "              $(flora_timers | tr '\n' ' ') flora-skills-sync.path flora.target"
 echo "  nginx       /etc/nginx/conf.d/flora.conf   (then a reload)"
 echo "  /etc/hosts  the flora block"
-echo "  docker      flora-mattermost, flora-mm-postgres, flora-nginx"
+echo "  docker      flora-mattermost, flora-mm-postgres, flora-nginx, flora-scribe-*"
 echo
 if [[ "$PURGE" == "1" ]]; then
   printf '  %sDELETED TOO (--purge):%s\n' "$_c_red$_c_bold" "$_c_reset"
@@ -94,6 +94,12 @@ if have_cmd docker; then
       && ok "stopped and removed the $label container(s)" \
       || skip "no $label containers running"
   done
+  if [[ -f "$FLORA_STATE/scribe/src/docker-compose.yml" ]]; then
+    docker compose -f "$FLORA_STATE/scribe/src/docker-compose.yml" \
+                   -f "$FLORA_STATE/scribe/docker-compose.override.yml" \
+                   down --remove-orphans >/dev/null 2>&1 \
+      && ok "stopped and removed the Scribe containers" || skip "no Scribe containers running"
+  fi
 else
   skip "no docker here"
 fi

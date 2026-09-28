@@ -139,6 +139,9 @@ if have_cmd ss; then
              "$FLORA_PUBLIC_OPENCODE opencode-public PUBLIC_OPENCODE"
              "$FLORA_PUBLIC_CHAT chat-public PUBLIC_CHAT"
              "$FLORA_PUBLIC_TOKENS tokens-public PUBLIC_TOKENS")
+    [[ "${FLORA_ENABLE_SCRIBE:-false}" == "true" ]] && checks+=(
+      "$FLORA_PUBLIC_SCRIBE scribe-public PUBLIC_SCRIBE"
+      "$FLORA_PORT_SCRIBE scribe PORT_SCRIBE")
   fi
   for p in "${checks[@]}"; do
     set -- $p
@@ -169,6 +172,13 @@ else must "only ${free_gb}G free on $FLORA_HOME -- 15G is the working minimum" \
           "Free space, or move the Flora directory to a larger filesystem
      (FLORA_HOME follows the directory; nothing to reconfigure)."; fi
 mem_mb=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
+if [[ "${FLORA_ENABLE_SCRIBE:-false}" == "true" && "${FLORA_SCRIBE_ASR_BACKEND:-stub}" != "stub" ]]; then
+  # Upstream's own sizing guidance, not a guess.
+  [[ "$mem_mb" -ge 8000 ]] || warn "Scribe with a real model wants about 8GB RAM per
+       accurate-model worker and this machine has ${mem_mb}MB. Transcription will be
+       slow or get OOM-killed. FLORA_SCRIBE_ASR_BACKEND=stub exercises everything
+       except the model."
+fi
 [[ "$mem_mb" -ge 3500 ]] && ok "${mem_mb}MB RAM" \
   || warn "${mem_mb}MB RAM -- Mattermost and Postgres want about 1GB between them;
        4GB+ is comfortable"

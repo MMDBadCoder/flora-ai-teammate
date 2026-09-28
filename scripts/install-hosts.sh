@@ -14,7 +14,8 @@ step "/etc/hosts"
 # that is a subset, and listing the others would be noise on every teammate's
 # machine.
 NAMES=""
-for svc in DASHBOARD HERMES OPENCODE CHAT TOKENS; do
+for svc in DASHBOARD HERMES OPENCODE CHAT TOKENS SCRIBE; do
+  [[ "$svc" == "SCRIBE" && "${FLORA_ENABLE_SCRIBE:-false}" != "true" ]] && continue
   [[ "$(flora_route_mode "$svc")" == "subdomain" ]] || continue
   host_var="FLORA_HOST_$svc"
   NAMES="${NAMES:+$NAMES }${!host_var}"

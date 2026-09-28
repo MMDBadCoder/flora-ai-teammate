@@ -31,6 +31,7 @@ enable_if "$FLORA_ENABLE_MATTERMOST" flora-mattermost.service
 if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
   enable_if true flora-nginx.service
 fi
+enable_if "$FLORA_ENABLE_SCRIBE" flora-scribe.service
 systemctl enable flora.target >/dev/null 2>&1 && ok "enabled flora.target"
 
 for t in $(flora_timers) flora-skills-sync.path; do

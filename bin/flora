@@ -20,7 +20,7 @@ cat <<'USAGE'
 flora -- the Flora AI teammate platform
 
   SETUP
-    install [what]       install or update software (all|hermes|opencode|tokenring|mattermost)
+    install [what]       install or update software (all|hermes|opencode|tokenring|mattermost|scribe)
     render               regenerate every config from config/templates/
     seed [--diff]        install shipped defaults into shared/ without overwriting
     fix-perms            hand the tree back to FLORA_USER after a sudo step
@@ -36,7 +36,7 @@ flora -- the Flora AI teammate platform
     down [svc...]        stop
     restart [svc...]     restart
     status               health table
-    logs <svc> [-f]      tail a log (tokenring|hermes|gateway|opencode|mattermost|nginx)
+    logs <svc> [-f]      tail a log (tokenring|hermes|gateway|opencode|mattermost|scribe|nginx)
 
   PEOPLE
     creds                every login, in one place
@@ -74,6 +74,7 @@ unit_for() {
     opencode)   echo flora-opencode.service ;;
     mattermost) echo flora-mattermost.service ;;
     nginx)      echo flora-nginx.service ;;
+    scribe)     echo flora-scribe.service ;;
     *) die "unknown service '$1' (tokenring|hermes|gateway|opencode|mattermost)" ;;
   esac
 }
@@ -91,12 +92,14 @@ case "$cmd" in
       all)        "$S/preflight.sh"; "$S/bootstrap-secrets.sh"; "$S/render.sh"
                   "$S/install-tokenring.sh"; "$S/install-hermes.sh"
                   "$S/install-opencode.sh";  "$S/install-mattermost.sh"
+                  "$S/install-scribe.sh"
                   "$S/render.sh" ;;
       hermes)     "$S/install-hermes.sh" ;;
       opencode)   "$S/install-opencode.sh" ;;
       tokenring)  "$S/install-tokenring.sh" ;;
       mattermost) "$S/install-mattermost.sh" ;;
-      *) die "install what? all|hermes|opencode|tokenring|mattermost" ;;
+      scribe)     "$S/install-scribe.sh" ;;
+      *) die "install what? all|hermes|opencode|tokenring|mattermost|scribe" ;;
     esac ;;
 
   bootstrap)
@@ -174,6 +177,8 @@ case "$cmd" in
         fi
         f="$FLORA_STATE/logs/nginx-hermes.error.log" ;;
       mattermost) exec docker compose -f "$FLORA_STATE/mattermost/docker-compose.yml" logs "$@" ;;
+      scribe) exec docker compose -f "$FLORA_STATE/scribe/src/docker-compose.yml" \
+                     -f "$FLORA_STATE/scribe/docker-compose.override.yml" logs "$@" ;;
       *) die "unknown service '$svc'" ;;
     esac
     [[ -f "$f" ]] || die "no log yet at $f"

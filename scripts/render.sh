@@ -63,7 +63,7 @@ render "$T/mattermost/docker-compose.yml.tmpl" "$FLORA_STATE/mattermost/docker-c
 # --- dashboard --------------------------------------------------------------
 # A port-mode tile gets data-port so the page can rebuild its link against
 # whatever host the browser used; a subdomain tile must keep its absolute URL.
-for svc in HERMES OPENCODE CHAT TOKENS; do
+for svc in HERMES OPENCODE CHAT TOKENS SCRIBE; do
   port_var="FLORA_PUBLIC_$svc"
   if [[ "$(flora_route_mode "$svc")" == "port" ]]; then
     printf -v "FLORA_TILE_$svc" 'data-port="%s"' "${!port_var}"
@@ -73,10 +73,41 @@ for svc in HERMES OPENCODE CHAT TOKENS; do
   export "FLORA_TILE_$svc"
 done
 
+# Optional modules contribute a whole tile or nothing at all, rather than a
+# dead link to a service that is not running.
+if [[ "$FLORA_ENABLE_SCRIBE" == "true" ]]; then
+  FLORA_TILE_SCRIBE_HTML=$(cat <<TILE
+
+    <li><a class="tile" href="$FLORA_URL_SCRIBE" data-svc="scribe" $FLORA_TILE_SCRIBE>
+      <div><div class="name">Scribe <kbd>5</kbd></div>
+           <div class="what">Meeting audio &rarr; Persian text</div></div>
+      <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
+TILE
+)
+else
+  FLORA_TILE_SCRIBE_HTML=""
+fi
+export FLORA_TILE_SCRIBE_HTML
+
 # Generated, therefore under state/: a generated file in the repository shows up
 # as an uncommitted change on every machine whose settings differ, and then blocks
 # the next git pull.
 render "$T/dashboard.html.tmpl" "$FLORA_STATE/dashboard/index.html" 0644
+
+# --- scribe (optional) ------------------------------------------------------
+if [[ "$FLORA_ENABLE_SCRIBE" == "true" ]]; then
+  ensure_dir "$FLORA_STATE/scribe/data"
+  ensure_dir "$FLORA_STATE/scribe/models"
+  render "$T/scribe/docker-compose.override.yml.tmpl" \
+         "$FLORA_STATE/scribe/docker-compose.override.yml" 0644
+  # Upstream reads .env from beside its own compose file, so it goes in the
+  # checkout -- which only exists once install-scribe.sh has cloned it.
+  if [[ -d "$FLORA_STATE/scribe/src" ]]; then
+    render "$T/scribe/env.tmpl" "$FLORA_STATE/scribe/src/.env" 0600
+  else
+    skip "scribe not cloned yet; its .env is written by bin/flora install scribe"
+  fi
+fi
 
 # --- nginx ------------------------------------------------------------------
 # The server blocks are generated per service, because routing mode is a
@@ -152,6 +183,12 @@ for tmpl in "$T"/systemd/*.tmpl; do
   unit="$(basename "$tmpl" .tmpl)"
   # The nginx unit only makes sense when Flora runs her own.
   if [[ "$unit" == "flora-nginx.service" && "${FLORA_NGINX:-docker}" != "docker" ]]; then
+    rm -f "$FLORA_STATE/systemd/$unit"
+    continue
+  fi
+  # An optional module that is switched off leaves no unit behind, so
+  # `bin/flora systemd` cannot install and start something nobody asked for.
+  if [[ "$unit" == "flora-scribe.service" && "$FLORA_ENABLE_SCRIBE" != "true" ]]; then
     rm -f "$FLORA_STATE/systemd/$unit"
     continue
   fi

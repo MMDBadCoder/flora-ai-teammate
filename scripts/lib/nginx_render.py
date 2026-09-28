@@ -27,6 +27,9 @@ import os
 import sys
 
 SERVICES = ["dashboard", "hermes", "opencode", "chat", "tokens"]
+# Optional modules appear only when switched on.
+if os.environ.get("FLORA_ENABLE_SCRIBE", "false") == "true":
+    SERVICES.append("scribe")
 
 PROXY_COMMON = """        proxy_http_version 1.1;
         proxy_set_header X-Real-IP $remote_addr;
@@ -55,13 +58,11 @@ def mode_of(service):
 
 def listener(service):
     """The listen/server_name pair for this service's mode."""
+    key = service.upper()
     if mode_of(service) == "subdomain":
-        host = env("FLORA_HOST_%s" % ("CHAT" if service == "chat" else
-                                      "TOKENS" if service == "tokens" else service.upper()))
-        return "    listen %s;\n    server_name %s;" % (env("FLORA_HTTP_PORT", "80"), host)
-    port = env("FLORA_PUBLIC_%s" % ("CHAT" if service == "chat" else
-                                    "TOKENS" if service == "tokens" else service.upper()))
-    return "    listen %s;\n    server_name _;" % port
+        return "    listen %s;\n    server_name %s;" % (
+            env("FLORA_HTTP_PORT", "80"), env("FLORA_HOST_%s" % key))
+    return "    listen %s;\n    server_name _;" % env("FLORA_PUBLIC_%s" % key)
 
 
 def logs(service, home):
@@ -164,6 +165,33 @@ server {
 }""" % (listener("chat"), logs("chat", home), backend_port, PROXY_COMMON, backend_port)
 
 
+def block_scribe(home, backend_port):
+    return """# ------------------------------------------------------------------- Scribe --
+# No HTTP basic auth: Scribe has accounts of its own, and uploads are large.
+server {
+%s
+
+%s
+
+    # Meeting audio. Upstream's own ceiling is MAX_UPLOAD_MB, which this must
+    # not undercut, or nginx rejects the file before the app can say why.
+    client_max_body_size 1024m;
+
+    location / {
+        proxy_pass http://127.0.0.1:%s;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $flora_connection_upgrade;
+        proxy_set_header Host $http_host;
+%s        # Transcription is minutes of work behind one request, and live
+        # microphone text streams back, so nothing here may be buffered.
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}""" % (listener("scribe"), logs("scribe", home), backend_port, PROXY_COMMON)
+
+
 def block_tokens(home, backend_port):
     return """# ---------------------------------------------------------------- TokenRing --
 # Its dashboard has a password of its own and /v1 is authenticated by sk-ring
@@ -200,6 +228,8 @@ def main():
         block_chat(home, env("FLORA_PORT_MATTERMOST", "8065")),
         block_tokens(home, env("FLORA_PORT_TOKENRING", "4000")),
     ]
+    if "scribe" in SERVICES:
+        blocks.append(block_scribe(home, env("FLORA_PORT_SCRIBE", "8000")))
 
     summary = "  ".join("%s=%s" % (s, mode_of(s)) for s in SERVICES)
     print("# Routing: %s\n" % summary)

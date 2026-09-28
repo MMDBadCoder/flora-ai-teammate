@@ -36,6 +36,28 @@ checking the result, that is a bug in this repository, not a feature.
 | 3 | **OpenCode** | Browser coding agent | `:7082` | 127.0.0.1:4096 | `flora-opencode.service` |
 | 4 | **Mattermost** | Team chat, where Flora answers as a bot | `:7083` | 127.0.0.1:8065 | `flora-mattermost.service` |
 
+### Optional modules
+
+| Module | What it is | Default | Switch |
+|---|---|---|---|
+| **Scribe** | offline Persian meeting transcription (upstream: [voice-2-text](https://github.com/MMDBadCoder/voice-2-text)) | **off** | `FLORA_ENABLE_SCRIBE` |
+
+An optional module contributes nothing at all when it is off: no nginx block, no
+dashboard tile, no systemd unit, no health probe, no hosts entry. Turning it on
+and re-rendering adds all of them.
+
+Scribe is off by default because it is the heaviest thing here — upstream sizes
+an accurate-model worker at 8GB RAM and the model is about 1.6GB — and because
+most teams will not want it. `FLORA_SCRIBE_ASR_BACKEND=stub` runs the whole
+interface, queue and exports against fabricated text, which is enough to decide
+whether it earns its keep before committing a model download to it.
+
+Like TokenRing, it is treated as a black box: a pinned upstream release, built
+with upstream's own `docker-compose.yml`, configured only through the `.env`
+keys upstream documents. Flora adds exactly one thing, a Compose override that
+moves `data` and `models` out of the checkout so a version bump never touches
+recordings. See [07-integrations.md](07-integrations.md#scribe).
+
 Plus two supporting processes:
 
 - **Hermes gateway** (`flora-hermes-gateway.service`) — the process that holds

@@ -170,6 +170,54 @@ the same pool:
 client = OpenAI(base_url="http://tokens.flora.com/v1", api_key="sk-ring-…")
 ```
 
+## Scribe — meeting audio to text
+
+Offline Persian transcription, upstream [voice-2-text](https://github.com/MMDBadCoder/voice-2-text).
+Optional and off by default.
+
+```bash
+# flora.env
+FLORA_ENABLE_SCRIBE=true
+FLORA_SCRIBE_REF=0.2.0              # a pinned upstream release
+FLORA_SCRIBE_ASR_BACKEND=stub       # or faster_whisper, once a model is in place
+```
+
+```bash
+bin/flora install scribe            # clone at the tag, render, build the image
+bin/flora render && sudo bin/flora nginx && sudo bin/flora systemd
+bin/flora up scribe
+```
+
+It appears on the dashboard as a fifth tile and at `http://<ip>:7085`. It has
+**its own accounts**, so like Mattermost and TokenRing it is not put behind
+Flora's account list; set `SCRIBE_ADMIN_PHONE` and `SCRIBE_ADMIN_PASSWORD` in
+`secrets/flora.env` before the first start to bootstrap an administrator, or
+leave them blank and register through its UI.
+
+### stub versus real transcription
+
+`stub` needs no model and fabricates text. Everything else is real — the queue,
+progress, cancellation, the exports — so it is the honest way to decide whether
+the module is worth a model download. For real transcription, follow upstream's
+`docs/SETUP.md` to place a model in `state/scribe/models`, then set
+`FLORA_SCRIBE_ASR_BACKEND=faster_whisper` and re-render.
+
+Upstream sizes one accurate-model worker at about **8GB RAM**; preflight warns
+when a real backend is selected on a machine with less.
+
+### What Flora does and does not do
+
+It pins a released tag, builds with upstream's own `docker-compose.yml`, and
+configures it through the `.env` keys upstream publishes — the same black-box
+treatment TokenRing gets. The single addition is a Compose override file that
+moves `data` and `models` to `state/scribe/`, so reinstalling or moving to a new
+release never touches recordings and transcripts. Nothing reads upstream's
+source to decide what to do.
+
+Worker pool sizing is upstream's rule, exposed as two settings:
+`FLORA_SCRIBE_WORKERS` x `FLORA_SCRIBE_CPU_THREADS` should stay at or below
+cores − 1.
+
 ## Adding an integration
 
 The pattern, in order:
