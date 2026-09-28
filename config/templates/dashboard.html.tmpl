@@ -65,22 +65,22 @@
   </header>
 
   <ul id="tiles">
-    <li><a class="tile" href="{{FLORA_URL_HERMES}}" data-svc="hermes" data-port="{{FLORA_PUBLIC_HERMES}}">
+    <li><a class="tile" href="{{FLORA_URL_HERMES}}" data-svc="hermes" {{FLORA_TILE_HERMES}}>
       <div><div class="name">Hermes <kbd>1</kbd></div>
            <div class="what">Chat with Flora, sessions, skills, cron</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
 
-    <li><a class="tile" href="{{FLORA_URL_OPENCODE}}" data-svc="opencode" data-port="{{FLORA_PUBLIC_OPENCODE}}">
+    <li><a class="tile" href="{{FLORA_URL_OPENCODE}}" data-svc="opencode" {{FLORA_TILE_OPENCODE}}>
       <div><div class="name">OpenCode <kbd>2</kbd></div>
            <div class="what">Coding agent in the browser</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
 
-    <li><a class="tile" href="{{FLORA_URL_CHAT}}" data-svc="mattermost" data-port="{{FLORA_PUBLIC_CHAT}}">
+    <li><a class="tile" href="{{FLORA_URL_CHAT}}" data-svc="mattermost" {{FLORA_TILE_CHAT}}>
       <div><div class="name">Mattermost <kbd>3</kbd></div>
            <div class="what">Team chat &mdash; Flora answers here</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
 
-    <li><a class="tile" href="{{FLORA_URL_TOKENS}}" data-svc="tokenring" data-port="{{FLORA_PUBLIC_TOKENS}}">
+    <li><a class="tile" href="{{FLORA_URL_TOKENS}}" data-svc="tokenring" {{FLORA_TILE_TOKENS}}>
       <div><div class="name">TokenRing <kbd>4</kbd></div>
            <div class="what">Shared API key pool and usage</div></div>
       <div class="state"><span class="dot"></span><span class="txt">…</span></div></a></li>
@@ -126,11 +126,14 @@
   // In port mode the links are rebuilt against whatever host the browser used
   // to reach this page, so the dashboard works over the LAN IP, a VPN address
   // or localhost without anything being configured for each of them.
-  if ("{{FLORA_ROUTING}}" === "ports") {
-    for (const tile of document.querySelectorAll(".tile")) {
-      const port = tile.dataset.port;
-      if (port) tile.href = location.protocol + "//" + location.hostname + ":" + port;
-    }
+  // A tile carrying data-port is reached by port, so its link is rebuilt against
+  // whatever host the browser used to open this page -- the same dashboard then
+  // works over a LAN IP, a VPN address or localhost with nothing configured per
+  // case. A subdomain tile keeps its absolute URL: its hostname is the whole
+  // point, and rewriting it would send people to the wrong vhost.
+  for (const tile of document.querySelectorAll(".tile")) {
+    const port = tile.dataset.port;
+    if (port) tile.href = location.protocol + "//" + location.hostname + ":" + port;
   }
 
   refresh();

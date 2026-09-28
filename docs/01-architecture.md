@@ -135,6 +135,42 @@ Two consequences worth knowing:
 `FLORA_NGINX=host` writes `/etc/nginx/conf.d/flora.conf` and reloads the host's
 nginx, validating first and restoring the previous file if validation fails.
 
+### Routing is per service
+
+`FLORA_ROUTING` sets the default and `FLORA_ROUTE_<SERVICE>` overrides it for
+one, so the two styles can be mixed:
+
+```ini
+FLORA_ROUTE_CHAT=subdomain     # http://chat.flora.com
+# everything else inherits ports:  http://<ip>:7081, :7082, :7084
+```
+
+A port-mode service gets `listen <its port>; server_name _;`. A subdomain-mode
+service gets `listen <FLORA_HTTP_PORT>; server_name <its host>;` and is told
+apart by name, so several share one port. `bin/flora hosts --print` lists only
+the names that are actually in subdomain mode.
+
+The dashboard follows suit per tile: a port-mode tile is rebuilt client-side
+against whatever host the browser used, so the page keeps working over a LAN IP,
+a VPN address or localhost; a subdomain tile keeps its absolute URL, because its
+hostname is the whole point.
+
+### What cannot be routed by name
+
+WebSockets can. A WebSocket handshake is an ordinary HTTP request carrying a
+`Host` header and `Upgrade: websocket`, so nginx routes it by name exactly like
+any other request — Mattermost's realtime channel, the Hermes terminal and the
+OpenCode session stream all work in subdomain mode. Verified: one port, two
+names, two different backends, `Host` arriving intact.
+
+What genuinely cannot is **Mattermost's optional Calls plugin**. Its WebRTC media
+is UDP on port 8443 and never passes through nginx at all — Mattermost's own
+deployment guide says nginx should not be used to forward that traffic, and the
+port must be reachable directly on the server. That is true in *both* routing
+modes, so it is not a reason to avoid subdomains; it just means enabling Calls
+means opening UDP 8443 straight through to this machine, alongside whatever
+nginx serves.
+
 ### The alternative: hostnames
 
 `FLORA_ROUTING=hosts` switches to name-based virtual hosts on a single port

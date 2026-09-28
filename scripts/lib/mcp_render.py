@@ -15,15 +15,46 @@ import shlex
 import sys
 
 HOME = os.environ.get("FLORA_HOME", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SRC = os.path.join(HOME, "shared", "mcp", "servers.json")
+SHIPPED = os.path.join(HOME, "seed", "mcp", "servers.json")
+LOCAL = os.path.join(HOME, "shared", "mcp", "servers.json")
 
 
 def load():
-    if not os.path.exists(SRC):
-        return {}
-    with open(SRC) as fh:
-        data = json.load(fh)
-    return {k: v for k, v in data.get("servers", {}).items() if v.get("enabled", True)}
+    """Servers that are enabled AND have every credential they declare.
+
+    requires_env exists so a server can ship enabled and simply not appear until
+    it is usable. Offering an agent a tool server whose credentials are blank
+    means it discovers the problem by calling the tool and failing, which is a
+    worse place to find out than here.
+    """
+    # The registry is the shipped list with the local one layered on top. A plain
+    # copy would mean a server added in a new release never reaches an existing
+    # install, because `flora seed` deliberately never overwrites a live file;
+    # merging by key gets new servers there while keeping local edits and local
+    # additions, which is what a registry wants and a free-text skill does not.
+    merged = {}
+    for path in (SHIPPED, LOCAL):
+        if not os.path.exists(path):
+            continue
+        with open(path) as fh:
+            merged.update(json.load(fh).get("servers", {}))
+    out = {}
+    for name, spec in merged.items():
+        if not spec.get("enabled", True):
+            continue
+        required = spec.get("requires_env", [])
+        missing = [v for v in required if not os.environ.get(v, "").strip()]
+        if missing:
+            # Nothing configured at all is the normal case for an integration a
+            # team does not use -- silent. Some but not all is a half-finished
+            # setup that will look like the server simply never appeared, so say so.
+            if len(missing) < len(required):
+                sys.stderr.write(
+                    "mcp: %r not configured -- set %s in secrets/flora.env to enable it\n"
+                    % (name, ", ".join(missing)))
+            continue
+        out[name] = spec
+    return out
 
 
 def expand(value):
@@ -57,13 +88,27 @@ def for_opencode(servers):
 
 
 def for_hermes(servers):
+    """`hermes mcp add` lines.
+
+    The command is wrapped in env(1) with the server's variables spelled out,
+    rather than trusting the child to inherit them from whatever process Hermes
+    happens to spawn it from. Inheritance may well work; depending on it means a
+    credential problem shows up as a tool failing at use time.
+    """
     lines = []
     for name, s in servers.items():
         if s.get("type") == "remote":
             lines.append("hermes mcp add %s --url %s" % (shlex.quote(name), shlex.quote(expand(s["url"]))))
-        else:
-            cmd = " ".join([expand(s["command"])] + expand(s.get("args", [])))
-            lines.append("hermes mcp add %s --command %s" % (shlex.quote(name), shlex.quote(cmd)))
+            continue
+        parts = []
+        env = expand(s.get("env", {}))
+        if env:
+            parts.append("env")
+            parts.extend("%s=%s" % (k, v) for k, v in sorted(env.items()))
+        parts.append(expand(s["command"]))
+        parts.extend(expand(s.get("args", [])))
+        cmd = " ".join(shlex.quote(x) for x in parts)
+        lines.append("hermes mcp add %s --command %s" % (shlex.quote(name), shlex.quote(cmd)))
     return "\n".join(lines)
 
 

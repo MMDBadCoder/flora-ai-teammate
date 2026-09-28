@@ -8,24 +8,53 @@
     "",
     "${VAR} is expanded from the environment at render time, so credentials stay",
     "in secrets/flora.env and never land in a tracked file.",
-    "Set \"enabled\": false to keep a definition around without loading it."
+    "",
+    "\"enabled\": false keeps a definition around without loading it.",
+    "\"requires_env\": [...] makes a server CONDITIONAL -- it is configured only",
+    "when every listed variable has a non-empty value, so a server whose",
+    "credentials are not filled in yet is silently absent instead of being",
+    "offered to the agents and failing on first use."
   ],
-
   "servers": {
+    "gerrit": {
+      "enabled": true,
+      "requires_env": [
+        "GERRIT_URL",
+        "GERRIT_HTTP_PASSWORD"
+      ],
+      "type": "local",
+      "command": "python3",
+      "args": [
+        "${FLORA_HOME}/scripts/mcp/gerrit_mcp.py"
+      ],
+      "env": {
+        "GERRIT_URL": "${GERRIT_URL}",
+        "GERRIT_USER": "${GERRIT_USER}",
+        "GERRIT_HTTP_PASSWORD": "${GERRIT_HTTP_PASSWORD}"
+      },
+      "note": "Gerrit code review: list and read changes, fetch a diff, read inline comments, post a review. Configured automatically as soon as GERRIT_URL and GERRIT_HTTP_PASSWORD are set in secrets/flora.env -- nothing else to turn on. Speaks Gerrit's documented REST API; see scripts/mcp/gerrit_mcp.py."
+    },
     "atlassian": {
       "enabled": false,
       "type": "local",
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.atlassian.com/v1/sse"],
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.atlassian.com/v1/sse"
+      ],
       "env": {},
       "note": "Confluence and Jira through Atlassian's own MCP server. Enable it and run `bin/flora sync`, then complete the OAuth flow once with: bin/flora hermes mcp login atlassian"
     },
-
     "filesystem": {
       "enabled": false,
       "type": "local",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${FLORA_HOME}/workspace"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${FLORA_HOME}/workspace"
+      ],
       "note": "Both agents already have shell access to workspace/, so this is usually redundant. Useful if you tighten the shell tool later."
     }
   }

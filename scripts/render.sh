@@ -61,17 +61,30 @@ render "$T/tokenring/env.tmpl" "$FLORA_STATE/tokenring/tokenring.env" 0600
 render "$T/mattermost/docker-compose.yml.tmpl" "$FLORA_STATE/mattermost/docker-compose.yml" 0644
 
 # --- dashboard --------------------------------------------------------------
+# A port-mode tile gets data-port so the page can rebuild its link against
+# whatever host the browser used; a subdomain tile must keep its absolute URL.
+for svc in HERMES OPENCODE CHAT TOKENS; do
+  port_var="FLORA_PUBLIC_$svc"
+  if [[ "$(flora_route_mode "$svc")" == "port" ]]; then
+    printf -v "FLORA_TILE_$svc" 'data-port="%s"' "${!port_var}"
+  else
+    printf -v "FLORA_TILE_$svc" '%s' ""
+  fi
+  export "FLORA_TILE_$svc"
+done
+
 # Generated, therefore under state/: a generated file in the repository shows up
 # as an uncommitted change on every machine whose settings differ, and then blocks
 # the next git pull.
 render "$T/dashboard.html.tmpl" "$FLORA_STATE/dashboard/index.html" 0644
 
 # --- nginx ------------------------------------------------------------------
-case "${FLORA_ROUTING:-ports}" in
-  ports) render "$T/nginx/flora-ports.conf.tmpl" "$FLORA_STATE/nginx/flora.conf" 0644 ;;
-  hosts) render "$T/nginx/flora-hosts.conf.tmpl" "$FLORA_STATE/nginx/flora.conf" 0644 ;;
-  *) die "FLORA_ROUTING must be 'ports' or 'hosts' (got: $FLORA_ROUTING)" ;;
-esac
+# The server blocks are generated per service, because routing mode is a
+# per-service choice; the template holds only what they share.
+FLORA_NGINX_SERVERS="$(python3 "$FLORA_HOME/scripts/lib/nginx_render.py")" \
+  || die "could not generate the nginx server blocks"
+export FLORA_NGINX_SERVERS
+render "$T/nginx/flora.conf.tmpl" "$FLORA_STATE/nginx/flora.conf" 0644
 
 # Flora's own nginx, when she runs one.
 if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then

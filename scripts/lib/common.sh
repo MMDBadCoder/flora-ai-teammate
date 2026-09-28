@@ -128,19 +128,23 @@ load_env() {
   # script and template.
   if [[ "$FLORA_HTTP_PORT" == "80" ]]; then export FLORA_URL_PORT=""
   else export FLORA_URL_PORT=":$FLORA_HTTP_PORT"; fi
-  if [[ "$FLORA_ROUTING" == "hosts" ]]; then
-    export FLORA_URL_DASHBOARD="http://${FLORA_HOST_DASHBOARD}${FLORA_URL_PORT}"
-    export FLORA_URL_HERMES="http://${FLORA_HOST_HERMES}${FLORA_URL_PORT}"
-    export FLORA_URL_OPENCODE="http://${FLORA_HOST_OPENCODE}${FLORA_URL_PORT}"
-    export FLORA_URL_CHAT="http://${FLORA_HOST_CHAT}${FLORA_URL_PORT}"
-    export FLORA_URL_TOKENS="http://${FLORA_HOST_TOKENS}${FLORA_URL_PORT}"
-  else
-    export FLORA_URL_DASHBOARD="http://${FLORA_IP}:${FLORA_PUBLIC_DASHBOARD}"
-    export FLORA_URL_HERMES="http://${FLORA_IP}:${FLORA_PUBLIC_HERMES}"
-    export FLORA_URL_OPENCODE="http://${FLORA_IP}:${FLORA_PUBLIC_OPENCODE}"
-    export FLORA_URL_CHAT="http://${FLORA_IP}:${FLORA_PUBLIC_CHAT}"
-    export FLORA_URL_TOKENS="http://${FLORA_IP}:${FLORA_PUBLIC_TOKENS}"
-  fi
+  # Routing is a per-service choice: FLORA_ROUTING is the default and
+  # FLORA_ROUTE_<SERVICE> overrides it for one, so a team can put Mattermost on a
+  # memorable subdomain while the agent UIs stay on ports nobody has to add to a
+  # hosts file. The advertised URL has to follow the same choice, or Hermes'
+  # Host check and Mattermost's SiteURL end up pointing at an address that does
+  # not route.
+  local svc host_var port_var url
+  for svc in DASHBOARD HERMES OPENCODE CHAT TOKENS; do
+    host_var="FLORA_HOST_$svc"; port_var="FLORA_PUBLIC_$svc"
+    if [[ "$(flora_route_mode "$svc")" == "subdomain" ]]; then
+      url="http://${!host_var}${FLORA_URL_PORT}"
+    else
+      url="http://${FLORA_IP}:${!port_var}"
+    fi
+    printf -v "FLORA_URL_$svc" '%s' "$url"
+    export "FLORA_URL_$svc"
+  done
 
   # A NAT gateway, container port-forward or reverse proxy in front of this
   # machine can translate ports (e.g. an external example.com:28001 forwarded
@@ -496,6 +500,19 @@ git_remote_sha() {
 is_external_known() {
   local f="$FLORA_HOME/$EXTERNAL_LIST_REL"
   [[ -f "$f" ]] && grep -qxF "$1" "$f"
+}
+
+# flora_route_mode <SERVICE_UC> -- port | subdomain, per service.
+flora_route_mode() {
+  local svc_uc="$1" chosen default
+  default="port"; [[ "$FLORA_ROUTING" == "hosts" ]] && default="subdomain"
+  chosen="$(eval "printf '%s' \"\${FLORA_ROUTE_${svc_uc}:-}\"")"
+  case "${chosen,,}" in
+    port|ports)                 echo port ;;
+    subdomain|host|hosts|domain) echo subdomain ;;
+    "")                         echo "$default" ;;
+    *) die "FLORA_ROUTE_${svc_uc} must be 'port' or 'subdomain' (got: $chosen)" ;;
+  esac
 }
 
 # --- misc ------------------------------------------------------------------

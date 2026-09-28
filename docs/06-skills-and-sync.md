@@ -186,7 +186,14 @@ change Flora's behaviour than any config setting.
 ### MCP tool servers
 
 `shared/mcp/servers.json` is one list in one format, rendered into each agent's
-dialect. Add a server, set `"enabled": true`, run `bin/flora sync`. Two are
+dialect. It is layered on top of the shipped `seed/mcp/servers.json`, so a server
+added in a new release reaches an existing install while local edits and local
+additions survive — a registry wants merging, unlike a skill, which does not.
+
+A server can declare `requires_env`, and is then configured only once every one
+of those variables has a value. That is how the Gerrit server appears the moment
+`GERRIT_URL` and `GERRIT_HTTP_PASSWORD` are set and stays invisible until then,
+instead of being offered to the agents and failing when first called. Add a server, set `"enabled": true`, run `bin/flora sync`. Two are
 predefined and disabled: Atlassian (Confluence and Jira) and a filesystem server.
 
 ## Troubleshooting

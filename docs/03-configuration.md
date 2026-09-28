@@ -38,7 +38,8 @@ half-finished config.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `FLORA_ROUTING` | `ports` | `ports` = `http://<ip>:<port>`; `hosts` = name-based vhosts |
+| `FLORA_ROUTING` | `ports` | Default for every service: `ports` or `hosts` |
+| `FLORA_ROUTE_<SERVICE>` | inherit | Per-service override: `port` or `subdomain`. One of `DASHBOARD`, `HERMES`, `OPENCODE`, `CHAT`, `TOKENS` |
 | `FLORA_NGINX` | `docker` | `docker` = Flora runs her own container; `host` = use the machine's nginx |
 | `FLORA_PUBLIC_DASHBOARD` | `7080` | what people type |
 | `FLORA_PUBLIC_HERMES` | `7081` | |

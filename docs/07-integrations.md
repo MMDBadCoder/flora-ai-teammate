@@ -120,6 +120,30 @@ Confluence rejects an update whose version is not exactly current + 1, which is
 what stops two writers overwriting each other. If you see that error, someone
 edited the page while Flora worked: re-read and redo the edit on top.
 
+### Gerrit as an MCP tool server
+
+Setting `GERRIT_URL` and `GERRIT_HTTP_PASSWORD` is all it takes: a Gerrit MCP
+server is configured for **both** agents automatically on the next
+`bin/flora render`. Nothing to enable, and if either value is blank it simply
+does not appear, rather than showing up and failing on first use.
+
+```bash
+bin/flora secrets edit      # GERRIT_URL, GERRIT_USER, GERRIT_HTTP_PASSWORD
+bin/flora sync
+```
+
+Six tools: `gerrit_list_changes`, `gerrit_get_change`, `gerrit_get_diff`,
+`gerrit_get_comments`, `gerrit_post_review`, `gerrit_list_projects`. That is
+enough for Flora to read a change and its diff, see what reviewers asked for, and
+post a review — while pushing changes stays with git and the `gerrit-change`
+skill, since that needs a working tree.
+
+It is Flora's own server (`scripts/mcp/gerrit_mcp.py`), standard library only,
+speaking Gerrit's documented REST API — the same API `scripts/integrations/gerrit.sh`
+uses. The npm packages offering this are a 404, an unpublished name, and a single
+0.0.1 release from an unknown author, which is not what should hold a team's
+review credentials.
+
 **Via MCP instead.** `shared/mcp/servers.json` has an Atlassian MCP entry. Set
 `"enabled": true`, run `bin/flora sync`, then `bin/flora hermes mcp login
 atlassian` once. That gives richer Jira and Confluence tools; the script stays
