@@ -108,6 +108,22 @@ key="$(secret_get flora.env FLORA_TOKENRING_KEY || true)"
 step "6. Services"
 "$FLORA_HOME/scripts/health.sh" || true
 
+# When the dashboard is down, Hermes has usually said exactly why and the reason
+# is sitting in its log. Repeating "down" adds nothing; quoting Hermes does.
+if ! curl -s -o /dev/null -m4 "http://127.0.0.1:${FLORA_PORT_HERMES}/" 2>/dev/null; then
+  hlog="$FLORA_STATE/logs/hermes-dashboard.log"
+  if [[ -f "$hlog" ]] && grep -q "Refusing to bind dashboard" "$hlog"; then
+    bad "the Hermes dashboard is refusing to start. Its own reason:"
+    grep -m1 -A1 "Refusing to bind dashboard" "$hlog" | sed 's/^/       /'
+    if [[ -z "$(secret_get flora.env HERMES_DASHBOARD_PASSWORD || true)" ]]; then
+      log "    HERMES_DASHBOARD_PASSWORD is empty, which is what leaves it with no auth"
+      log "    provider. Fix:  bin/flora render && bin/flora restart hermes"
+    else
+      log "    See docs/08-troubleshooting.md#the-hermes-dashboard-will-not-start"
+    fi
+  fi
+fi
+
 step "7. Skills"
 "$FLORA_HOME/scripts/skills-sync.sh" --check || bad "the skill tree has drifted (run: bin/flora skills sync)"
 

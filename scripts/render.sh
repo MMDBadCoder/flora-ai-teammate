@@ -52,6 +52,15 @@ render "$T/bin/hermes.tmpl"   "$FLORA_STATE/bin/hermes"   0755
 render "$T/bin/opencode.tmpl" "$FLORA_STATE/bin/opencode" 0755
 
 # --- agents -----------------------------------------------------------------
+# INVARIANT, the same one the account file below follows: a credential this
+# render DECLARES must exist. Hermes engages its auth gate as soon as a public
+# URL is set, and refuses to start at all when the only configured provider has
+# an empty password -- while `hermes` on the CLI keeps working, so the failure
+# looks like the dashboard alone being broken rather than a blank secret.
+secret_ensure flora.env HERMES_DASHBOARD_PASSWORD
+FLORA_HERMES_DASHBOARD_PW="$HERMES_DASHBOARD_PASSWORD"
+export FLORA_HERMES_DASHBOARD_PW
+
 render "$T/hermes/config.yaml.tmpl" "$HERMES_HOME/config.yaml"      0644
 render "$T/hermes/env.tmpl"         "$HERMES_HOME/.env"             0600
 render "$T/opencode/opencode.json.tmpl" "$OPENCODE_CONFIG_DIR/opencode.json" 0644

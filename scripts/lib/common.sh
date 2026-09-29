@@ -426,6 +426,27 @@ secret_set() {
   if [[ -n "$val" ]]; then ok "set $key in secrets/$1"; else ok "seeded $key in secrets/$1 (empty -- fill it in)"; fi
   FLORA_CHANGED=1; return 0
 }
+# secret_ensure <FILE.env> <KEY> -- generate a value when the key is missing OR
+# present but empty. secret_set deliberately never touches an existing key, which
+# is right for a value someone filled in and wrong for one that must not be blank:
+# an empty credential is not "configured", it is a config that cannot work.
+secret_ensure() {
+  local file="$FLORA_HOME/secrets/$1" key="$2" val
+  ensure_dir "$FLORA_HOME/secrets" 0700
+  touch "$file"; chmod 0600 "$file"
+  if grep -qE "^${key}=.+" "$file"; then FLORA_CHANGED=0; return 0; fi
+  val="$(gen_secret 24)"
+  if grep -qE "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${val}|" "$file"
+  else
+    printf '%s=%s\n' "$key" "$val" >> "$file"
+  fi
+  printf -v "$key" '%s' "$val"
+  export "$key"
+  ok "generated $key (it was empty, and an empty one stops the service starting)"
+  FLORA_CHANGED=1; return 0
+}
+
 secret_get() {
   local file="$FLORA_HOME/secrets/$1" key="$2"
   [[ -f "$file" ]] || return 1

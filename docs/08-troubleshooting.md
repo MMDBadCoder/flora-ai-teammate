@@ -332,6 +332,41 @@ Two different symptoms, one root cause: how many things are checking credentials
   A 401 there means `OPENCODE_SERVER_PASSWORD` is still reaching it. Check that
   `state/bin/opencode` contains the `unset` block, which is where it is dropped.
 
+## The Hermes dashboard will not start (but `bin/flora hermes` works)
+
+Those are two different things: the CLI never touches the dashboard's auth gate,
+so a working CLI says the install is fine and tells you nothing about the
+dashboard. Hermes explains itself in its log:
+
+```bash
+bin/flora logs hermes
+```
+
+The common one:
+
+```
+Refusing to bind dashboard to 127.0.0.1 — dashboard.public_url is set to
+http://<ip>:7081 — an operator-declared external URL engages the auth gate even
+on a loopback bind, but no auth providers are registered.
+```
+
+Hermes turns on authentication as soon as a public URL is declared, and refuses
+to start when the only configured provider has an **empty password**. That is
+`HERMES_DASHBOARD_PASSWORD` in `secrets/flora.env` being blank:
+
+```bash
+bin/flora render          # generates it if empty, and rewrites Hermes' .env
+bin/flora restart hermes
+```
+
+`render` now guarantees that credential, so this cannot recur: a config that
+declares a dashboard account will not be written with no password behind it.
+`bin/flora doctor` quotes Hermes' reason when the dashboard is down.
+
+Other reasons it refuses, all in the same log: port 9119 already taken, or a
+`FLORA_IP` that does not match what the browser sends — see
+[Invalid Host header](#hermes-says-invalid-host-header) for that one.
+
 ## A service will not stay up
 
 ```bash
