@@ -75,6 +75,18 @@ else
 fi
 
 step "5. Configuration"
+# flora.env is exported wholesale into every script and six systemd units, so a
+# loader variable put here is not a local fix -- it is prepended to the library
+# search path of every binary Flora runs, where one stale .so shadows the correct
+# system one and produces failures far from the change.
+for risky in LD_LIBRARY_PATH LD_PRELOAD PYTHONPATH NODE_OPTIONS; do
+  if grep -qE "^[[:space:]]*${risky}=" "$FLORA_HOME/flora.env" 2>/dev/null; then
+    bad "$risky is set in flora.env, which exports it to EVERY Flora process
+       (both agents, TokenRing, docker, git, python -- not just the one that needed it).
+       A missing system library belongs in the system: sudo apt install -y <package>.
+       If it must be per-service, put it in that unit's Environment= instead."
+  fi
+done
 # New releases add settings. Missing ones fall back to a built-in default, so
 # nothing breaks -- but it is worth knowing which knobs you have not seen.
 if [[ -f "$FLORA_HOME/flora.env" && -f "$FLORA_HOME/flora.env.example" ]]; then
