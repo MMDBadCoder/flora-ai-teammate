@@ -90,7 +90,10 @@ Two paths, both without touching Flora's own config:
 
 Proper accounts: email invites, roles, channels, MFA, session revocation.
 
-- **Admin**: the first account created during install.
+- **Admin**: the first account registered in the browser. Flora does not create
+  it — and does not need it either: `bin/flora mattermost create-admin` and
+  `passwd` work through Mattermost's local mode, with no Mattermost login. See
+  [07-integrations.md](07-integrations.md#mattermost-admin-without-a-mattermost-login).
 - **Adding people**: System Console → Users → Add, or invite links.
 - **Open sign-up is off** (`MM_TEAMSETTINGS_ENABLEOPENSERVER=false`). Invite only.
 - **Email is off** — there is no SMTP server on an offline network, so invites

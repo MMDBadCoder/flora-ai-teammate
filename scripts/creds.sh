@@ -47,8 +47,12 @@ printf '  password  %s\n' "$ring_pw"
 printf '            (no username; change it in Settings, which signs everyone out)\n'
 
 printf '\n%sMattermost%s %s\n' "$_c_bold" "$_c_reset" "$FLORA_URL_CHAT"
-printf '  Its own accounts. The FIRST one you create in the browser becomes the\n'
-printf '  system admin -- use %s.\n' "$FLORA_ADMIN_EMAIL"
+printf '  Its own accounts, which Flora does not create. The FIRST one registered in\n'
+printf '  the browser becomes system admin -- use %s.\n' "$FLORA_ADMIN_EMAIL"
+printf '  Nobody registered, or forgotten the password? No Mattermost login needed:\n'
+printf '    bin/flora mattermost users\n'
+printf '    bin/flora mattermost create-admin <username> <email>\n'
+printf '    bin/flora mattermost passwd <username>\n' 
 if [[ -n "$(secret_get flora.env MATTERMOST_BOT_TOKEN || true)" ]]; then
   printf '  bot token set; Flora answers users in MATTERMOST_ALLOWED_USERS\n'
 else

@@ -43,6 +43,8 @@ flora -- the Flora AI teammate platform
     user add <name> [pw] create or reset a UI account
     user del <name>      remove one
     user list            list them
+    mattermost <cmd>     Mattermost accounts without a Mattermost login:
+                         users | create-admin <u> <email> | admin <u> | passwd <u>
 
   THE BRAIN
     skills list          what Flora knows
@@ -187,6 +189,7 @@ case "$cmd" in
 
   user)    load_env; "$S/users.sh" "$@" ;;
   creds)   load_env; "$S/creds.sh" ;;
+  mattermost) load_env; "$S/mattermost-admin.sh" "$@" ;;
 
   skills)
     load_env

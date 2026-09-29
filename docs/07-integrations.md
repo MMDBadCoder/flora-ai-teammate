@@ -41,6 +41,29 @@ the two. See
 **She is ignoring me.** In order: is her ID in `MATTERMOST_ALLOWED_USERS`
 (empty means nobody); is the bot in the channel; `bin/flora logs gateway -f`.
 
+### Mattermost admin without a Mattermost login
+
+Flora does not create Mattermost's administrator: the first account registered
+in the browser becomes system admin, which is Mattermost's design. That leaves an
+obvious hole when nobody has registered, or whoever did has forgotten the
+password.
+
+Flora's compose file enables Mattermost's **local mode**, which exposes `mmctl`
+over a unix socket inside the container. Anything that can reach it is already
+root-equivalent on this host, so it needs no login of its own:
+
+```bash
+bin/flora mattermost users                              # who exists
+bin/flora mattermost create-admin <username> <email>    # new system admin
+bin/flora mattermost admin <username>                   # promote an existing user
+bin/flora mattermost passwd <username>                  # reset a password
+```
+
+A password is generated and shown once when you do not supply one.
+
+`calls` and `playbooks` in the user list are Mattermost's own plugin accounts,
+not people.
+
 ## Gerrit — changing code
 
 `scripts/integrations/gerrit.sh` is the single entry point; the `gerrit-change`
