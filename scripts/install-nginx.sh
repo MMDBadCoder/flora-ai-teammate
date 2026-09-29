@@ -9,6 +9,11 @@ load_env
 SRC="$FLORA_STATE/nginx/flora.conf"
 [[ -f "$SRC" ]] || die "run scripts/render.sh first"
 
+# Before anything that serves is touched: nginx -t proves the syntax parses, not
+# that the files it names are there. A vhost pointing at a missing password file
+# starts happily and then refuses every login with 403.
+verify_nginx_references "$SRC" || die "refusing to install a config that cannot serve"
+
 step "nginx (${FLORA_NGINX:-docker})"
 
 # --- the account file -------------------------------------------------------

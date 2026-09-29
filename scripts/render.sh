@@ -165,6 +165,27 @@ AUTH
   *) die "FLORA_AUTH_MODE must be 'nginx' or 'backend' (got: $FLORA_AUTH_MODE)" ;;
 esac
 
+# INVARIANT: whatever references the account list must not be able to outlive it.
+#
+# This is the bug that let a default install prompt for a password and then
+# refuse every one of them with 403: the dashboard is gated in every auth mode,
+# but the file it points at was created by a different script under a different
+# condition, and the two drifted when the default auth mode changed. nginx gives
+# no useful signal for it -- a missing password file still challenges, then
+# answers 403 to right and wrong credentials alike.
+#
+# So the step that writes the reference also guarantees the referent. It is
+# generated here, from the password bootstrap already put in secrets/, and
+# creating it twice is a no-op.
+if grep -qs "auth_basic_user_file" "$FLORA_STATE/nginx/auth.conf" "$FLORA_STATE/nginx/dashboard-auth.conf"; then
+  if [[ ! -s "$FLORA_STATE/nginx/htpasswd" ]]; then
+    log "no account file yet; creating the first account: $FLORA_ADMIN_USER"
+    "$FLORA_HOME/scripts/users.sh" add "$FLORA_ADMIN_USER" \
+      "$(secret_get flora.env FLORA_ADMIN_PASSWORD)" | sed 's/^/  /'
+  fi
+  chmod a+r "$FLORA_STATE/nginx/htpasswd" 2>/dev/null || true
+fi
+
 # The dashboard is static content with no backend of its own to enforce a
 # password -- in FLORA_AUTH_MODE=backend, auth.conf above is deliberately a
 # no-op for the services that DO have their own gate, but the dashboard has

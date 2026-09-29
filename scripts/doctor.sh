@@ -162,6 +162,7 @@ else
     esac
   fi
 fi
+verify_nginx_references || bad "the nginx config references paths that are not there"
 check_dashboard_servable || bad "the dashboard answers 403 until the above is fixed"
 
 if [[ "$FLORA_AUTH_MODE" == "nginx" ]]; then

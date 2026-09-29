@@ -526,6 +526,27 @@ flora_route_mode() {
   esac
 }
 
+# verify_nginx_references -- every path the generated config names must exist.
+#
+# `nginx -t` validates syntax, not reality: a vhost pointing at a password file
+# or a document root that is not there passes the test and then fails at request
+# time, with a status code that describes nothing useful. This closes that gap
+# generically -- for auth files, roots and includes alike -- so a future config
+# referencing a future file cannot reintroduce the same class of fault.
+verify_nginx_references() {
+  local conf="${1:-$FLORA_STATE/nginx/flora.conf}"
+  [[ -f "$conf" ]] || { err "no generated config at $conf"; return 1; }
+  local report
+  report="$(python3 "$FLORA_HOME/scripts/lib/nginx_verify.py" "$conf")" || {
+    printf '%s\n' "$report" | while IFS= read -r line; do err "$line"; done
+    log "    nginx would start and then fail every request touching these."
+    log "    Regenerate them with:  bin/flora render"
+    return 1
+  }
+  ok "every path the config references exists"
+  return 0
+}
+
 # check_dashboard_servable -- why the dashboard answers 403 after a correct login.
 #
 # A 403 here is never about the password: 401 is "wrong or missing credentials",
@@ -581,11 +602,20 @@ check_dashboard_servable() {
 
   # What the container actually sees can differ from the host: a bind mount whose
   # source did not exist when the container was created shows up empty inside.
-  if have_cmd docker && docker ps --format '{{.Names}}' 2>/dev/null | grep -qx flora-nginx; then
-    if ! docker exec flora-nginx test -f "$idx" 2>/dev/null; then
-      err "flora-nginx cannot see $idx inside the container"
-      log "    Its bind mount is stale -- recreate it:  sudo bin/flora nginx"
-      problems=1
+  # Only meaningful against a RUNNING container. `docker ps` also lists one that
+  # is crash-restarting, and calling that a stale mount would send someone after
+  # the wrong problem.
+  if have_cmd docker; then
+    local state
+    state="$(docker inspect -f '{{.State.Status}}' flora-nginx 2>/dev/null || true)"
+    if [[ "$state" == "running" ]]; then
+      if ! docker exec flora-nginx test -f "$idx" 2>/dev/null; then
+        err "flora-nginx is running but cannot see $idx inside the container"
+        log "    Its bind mount predates the file -- recreate it:  sudo bin/flora nginx"
+        problems=1
+      fi
+    elif [[ -n "$state" && "$state" != "exited" ]]; then
+      warn "flora-nginx is $state, not running -- check why:  bin/flora logs nginx"
     fi
   fi
 

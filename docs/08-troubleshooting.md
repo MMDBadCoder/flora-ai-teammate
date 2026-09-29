@@ -231,8 +231,18 @@ sudo bin/flora nginx
 
 This was a bug in Flora, not your install: the dashboard is behind the account
 list in every auth mode, but the file was only created when
-`FLORA_AUTH_MODE=nginx`, and the default is `backend`. Fixed — `bin/flora nginx`
-now creates it in both modes, and `bin/flora doctor` reports it.
+`FLORA_AUTH_MODE=nginx`, and the default is `backend`.
+
+It cannot recur, at three layers:
+
+- **`bin/flora render` creates the account file** whenever it writes a config
+  that references it. The reference and the referent now come from the same
+  step, so they cannot drift apart again when a default changes.
+- **`bin/flora nginx` refuses to install** a config naming a path that is not
+  there. `nginx -t` only proves the syntax parses; `verify_nginx_references`
+  follows every `include`, `root`, `index` and `auth_basic_user_file` and checks
+  reality. A config that would 403 never reaches a serving nginx.
+- **`bin/flora doctor` reports it**, for anything that goes missing later.
 
 For the record, nginx's three answers about that file:
 

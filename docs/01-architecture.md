@@ -267,6 +267,21 @@ themselves (`node`, and the `git`/`curl` the installers call).
 there is one. `bin/flora hermes …`, `bin/flora opencode …` and `bin/flora shell`
 do it for you.
 
+## Generated configs own what they reference
+
+`nginx -t` proves a config parses. It says nothing about whether the files it
+names exist, and nginx's answers when they do not are actively misleading: a
+missing password file still challenges the browser and then returns 403 to every
+credential, right or wrong. That shipped once, because the vhost referencing the
+account list and the script creating it lived apart and drifted when a default
+changed.
+
+The rule now is that the step which writes a reference also guarantees the
+referent — `render` creates the account file whenever it writes a config that
+points at one — and `bin/flora nginx` verifies every `include`, `root`, `index`
+and `auth_basic_user_file` against the filesystem before a serving nginx is
+touched. A config that would fail at request time is refused at install time.
+
 ## What is deliberately not here
 
 - **No TLS.** Plain HTTP, addressed by IP. If this ever gets a public address,
