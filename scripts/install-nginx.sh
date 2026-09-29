@@ -11,8 +11,14 @@ SRC="$FLORA_STATE/nginx/flora.conf"
 
 step "nginx (${FLORA_NGINX:-docker})"
 
-# --- the account file (FLORA_AUTH_MODE=nginx) -------------------------------
-if [[ "$FLORA_AUTH_MODE" == "nginx" && ! -s "$FLORA_STATE/nginx/htpasswd" ]]; then
+# --- the account file -------------------------------------------------------
+# Needed in EVERY auth mode, not just FLORA_AUTH_MODE=nginx: the dashboard has no
+# backend of its own to enforce a password, so dashboard-auth.conf always points
+# at this file. Creating it only in nginx mode left every default install with a
+# vhost referencing a password file that was never written -- and nginx answers a
+# missing password file by challenging, then returning 403 to every credential,
+# right or wrong, which looks exactly like a corrupted install.
+if [[ ! -s "$FLORA_STATE/nginx/htpasswd" ]]; then
   log "creating the first account: $FLORA_ADMIN_USER"
   "$FLORA_HOME/scripts/users.sh" add "$FLORA_ADMIN_USER" "$(secret_get flora.env FLORA_ADMIN_PASSWORD)"
 fi

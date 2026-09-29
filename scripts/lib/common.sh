@@ -539,7 +539,24 @@ flora_route_mode() {
 # Guessing between them costs more than checking, so this checks.
 check_dashboard_servable() {
   local root="$FLORA_STATE/dashboard" idx="$FLORA_STATE/dashboard/index.html"
+  local ht="$FLORA_STATE/nginx/htpasswd"
   local problems=0
+
+  # The account list, first: a MISSING password file makes nginx challenge and
+  # then answer 403 to every credential, right or wrong, which reads as a broken
+  # install rather than a missing file. (An unreadable one gives 500 instead.)
+  if grep -rqs "auth_basic_user_file" "$FLORA_STATE/nginx/"*.conf 2>/dev/null; then
+    if [[ ! -s "$ht" ]]; then
+      err "no account file at ${ht/#$FLORA_HOME/.}, but a vhost requires one"
+      log "    Every login will be refused with 403, whatever is typed. Create one:"
+      log "      bin/flora user add ${FLORA_ADMIN_USER:-admin}"
+      problems=1
+    elif [[ ! "$(stat -c %a "$ht")" =~ [4567]$ ]]; then
+      err "$ht is not readable by nginx (mode $(stat -c %a "$ht")) -- logins will fail with 500"
+      log "      sudo chmod a+r $ht"
+      problems=1
+    fi
+  fi
 
   if [[ ! -f "$idx" ]]; then
     err "the dashboard page is missing: ${idx/#$FLORA_HOME/.}"

@@ -216,11 +216,36 @@ docker compose -f state/mattermost/docker-compose.yml up -d
 
 Everything else — render, sync, health, housekeeping — works unchanged.
 
-## The dashboard asks for a password, accepts it, then says 403 Forbidden
+## 403 Forbidden after the password prompt — including with a WRONG password
 
-The password was fine. **401 is "wrong or missing credentials"; 403 is "you are
-in, and nginx still will not serve the file"** — so this is never an account
-problem. Exactly three things cause it:
+**If a deliberately wrong password also gives 403 instead of 401, the account
+file is missing.** Working basic auth answers a wrong password with 401 every
+time; nginx returns 403 to *every* credential when it cannot open
+`auth_basic_user_file` at all. The prompt still appears, because challenging
+needs no file — only verifying does.
+
+```bash
+bin/flora user add admin      # creates state/nginx/htpasswd
+sudo bin/flora nginx
+```
+
+This was a bug in Flora, not your install: the dashboard is behind the account
+list in every auth mode, but the file was only created when
+`FLORA_AUTH_MODE=nginx`, and the default is `backend`. Fixed — `bin/flora nginx`
+now creates it in both modes, and `bin/flora doctor` reports it.
+
+For the record, nginx's three answers about that file:
+
+| State of `state/nginx/htpasswd` | Wrong password | Right password |
+|---|---|---|
+| present and readable | 401 | 200 |
+| **missing** | **403** | **403** |
+| present but unreadable | 500 | 500 |
+
+## 403 Forbidden after a password that IS accepted
+
+If a wrong password correctly gives 401 and only the right one gives 403, the
+credentials are fine and nginx cannot serve the file. Three causes:
 
 ```bash
 bin/flora doctor          # names which one
