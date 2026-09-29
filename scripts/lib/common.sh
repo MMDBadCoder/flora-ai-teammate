@@ -526,6 +526,56 @@ flora_route_mode() {
   esac
 }
 
+# check_dashboard_servable -- why the dashboard answers 403 after a correct login.
+#
+# A 403 here is never about the password: 401 is "wrong or missing credentials",
+# 403 is "you are in, and nginx still will not serve the file". Exactly three
+# things cause it, each with its own signature in nginx's error log:
+#
+#   1. index.html is not there          -> "directory index of ... is forbidden"
+#   2. index.html is not readable       -> open() ... failed (13: Permission denied)
+#   3. its directory is not traversable -> "..." is forbidden (13: Permission denied)
+#
+# Guessing between them costs more than checking, so this checks.
+check_dashboard_servable() {
+  local root="$FLORA_STATE/dashboard" idx="$FLORA_STATE/dashboard/index.html"
+  local problems=0
+
+  if [[ ! -f "$idx" ]]; then
+    err "the dashboard page is missing: ${idx/#$FLORA_HOME/.}"
+    log "    It is generated. Rebuild it with:  bin/flora render"
+    problems=1
+  else
+    # nginx runs as an unprivileged user -- the container's own, or www-data --
+    # so "others" is what matters here, not the owner.
+    local dmode fmode
+    dmode="$(stat -c %a "$root")"; fmode="$(stat -c %a "$idx")"
+    if [[ ! "$dmode" =~ [157]$ ]]; then
+      err "$root is mode $dmode -- nginx cannot traverse it"
+      log "    sudo chmod a+rx $root"
+      problems=1
+    fi
+    if [[ ! "$fmode" =~ [4567]$ ]]; then
+      err "$idx is mode $fmode -- nginx cannot read it"
+      log "    sudo chmod a+r $idx"
+      problems=1
+    fi
+  fi
+
+  # What the container actually sees can differ from the host: a bind mount whose
+  # source did not exist when the container was created shows up empty inside.
+  if have_cmd docker && docker ps --format '{{.Names}}' 2>/dev/null | grep -qx flora-nginx; then
+    if ! docker exec flora-nginx test -f "$idx" 2>/dev/null; then
+      err "flora-nginx cannot see $idx inside the container"
+      log "    Its bind mount is stale -- recreate it:  sudo bin/flora nginx"
+      problems=1
+    fi
+  fi
+
+  [[ "$problems" -eq 0 ]] && ok "the dashboard page is present and servable"
+  return "$problems"
+}
+
 # --- misc ------------------------------------------------------------------
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1 ($2)"; }
 have_cmd() { command -v "$1" >/dev/null 2>&1; }

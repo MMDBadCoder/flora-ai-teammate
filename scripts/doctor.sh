@@ -162,6 +162,8 @@ else
     esac
   fi
 fi
+check_dashboard_servable || bad "the dashboard answers 403 until the above is fixed"
+
 if [[ "$FLORA_AUTH_MODE" == "nginx" ]]; then
   [[ -s "$FLORA_STATE/nginx/htpasswd" ]] && ok "$(wc -l < "$FLORA_STATE/nginx/htpasswd") UI account(s)" \
     || bad "no UI accounts (bin/flora user add <name>)"

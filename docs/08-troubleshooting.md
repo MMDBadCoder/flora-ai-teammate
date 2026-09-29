@@ -216,6 +216,38 @@ docker compose -f state/mattermost/docker-compose.yml up -d
 
 Everything else — render, sync, health, housekeeping — works unchanged.
 
+## The dashboard asks for a password, accepts it, then says 403 Forbidden
+
+The password was fine. **401 is "wrong or missing credentials"; 403 is "you are
+in, and nginx still will not serve the file"** — so this is never an account
+problem. Exactly three things cause it:
+
+```bash
+bin/flora doctor          # names which one
+```
+
+Or read it straight from nginx, which logs the reason every time:
+
+```bash
+tail -5 state/logs/nginx-dashboard.error.log
+```
+
+| Log line | Cause | Fix |
+|---|---|---|
+| `directory index of "..." is forbidden` | `state/dashboard/index.html` is not there | `bin/flora render` |
+| `open() "..." failed (13: Permission denied)` | the page is not readable by nginx | `sudo chmod a+r state/dashboard/index.html` |
+| `"..." is forbidden (13: Permission denied)` | its directory is not traversable | `sudo chmod a+rx state/dashboard` |
+
+A fourth possibility with the containerised nginx: if `state/dashboard` did not
+exist when the container was created, Docker made the bind-mount source as an
+empty root-owned directory, so the container sees no `index.html` even though the
+host has one. `sudo bin/flora nginx` recreates the container against the real
+directory.
+
+`bin/flora nginx` now runs this check straight after starting nginx, so a fresh
+install says so at install time instead of leaving it to be discovered on the
+first visit.
+
 ## A page does not load at all
 
 ```bash

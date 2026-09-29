@@ -68,6 +68,10 @@ if [[ "${FLORA_NGINX:-docker}" == "docker" ]]; then
   log "starting Flora's nginx"
   docker compose -f "$COMPOSE" up -d --remove-orphans
   ok "flora-nginx is up"
+  # A 403 the first time someone opens the dashboard is a bad way to find out
+  # the page was never generated or is not readable. Check it here instead.
+  sleep 2
+  check_dashboard_servable || warn "the dashboard will answer 403 until the above is fixed"
   # `up -d` only recreates a container when the COMPOSE FILE itself changed --
   # it has no idea that flora.conf/auth.conf, bind-mounted read-only into an
   # already-running container, are different on disk now. Nginx re-reads
@@ -108,4 +112,5 @@ fi
 nginx -t >/dev/null 2>&1 || die "nginx config is broken (not by Flora); fix it before reloading"
 systemctl reload nginx 2>/dev/null || nginx -s reload
 ok "host nginx reloaded"
+check_dashboard_servable || warn "the dashboard will answer 403 until the above is fixed"
 print_urls
