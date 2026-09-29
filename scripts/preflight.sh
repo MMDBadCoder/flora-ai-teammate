@@ -80,6 +80,22 @@ else
   fi
 fi
 
+# --- shared libraries Hermes' own toolchain needs ---------------------------
+# Hermes downloads its own Node rather than using the system one. That binary
+# links against libatomic, which a minimal Debian or Ubuntu does not install --
+# and the failure surfaces much later as "Building web UI... failed" in a loop,
+# naming neither the library nor the package.
+if [[ "${FLORA_ENABLE_HERMES:-true}" == "true" ]]; then
+  if ldconfig -p 2>/dev/null | grep -q 'libatomic\.so\.1'; then
+    ok "libatomic.so.1 present (Hermes' bundled Node needs it)"
+  else
+    must "libatomic.so.1 is missing -- Hermes' own Node will not start without it" \
+         "sudo apt install -y libatomic1
+     Hermes downloads its own Node; that binary links against this library, and
+     without it every build step fails with exit 127."
+  fi
+fi
+
 # --- python -----------------------------------------------------------------
 if have_cmd python3; then
   if python3 -c 'import sys; sys.exit(0 if sys.version_info>=(3,11) else 1)'; then

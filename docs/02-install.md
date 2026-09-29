@@ -14,9 +14,13 @@ About 30 minutes, most of it waiting for downloads.
 
 ```bash
 sudo apt update
-sudo apt install -y git curl python3 openssl apache2-utils \
+sudo apt install -y git curl python3 openssl apache2-utils libatomic1 \
                     docker.io docker-compose-v2
 ```
+
+`libatomic1` is there because Hermes downloads its own Node, and that binary
+links against it. A minimal Debian or Ubuntu does not have it, and without it
+Hermes installs cleanly and then fails every build step with exit 127.
 
 nginx is **not** in that list: by default Flora runs her own in a container
 (`FLORA_NGINX=docker`), writes nothing to `/etc/nginx`, and leaves any nginx

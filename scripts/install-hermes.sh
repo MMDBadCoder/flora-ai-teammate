@@ -103,5 +103,9 @@ if "$FLORA_STATE/bin/hermes" curator status 2>/dev/null | grep -qi 'ENABLED'; th
     || warn "could not pause the built-in curator; do it with: bin/flora hermes curator pause"
 fi
 
+# The download can succeed and still be unrunnable if a shared library is
+# missing; say so here rather than let it surface as a failing web UI build.
+verify_hermes_toolchain || warn "Hermes is installed but its toolchain cannot run -- fix the above, then: bin/flora restart hermes"
+
 ensure_dir "$HERMES_HOME/skills"
 ok "HERMES_HOME=${HERMES_HOME/#$FLORA_HOME/.}"

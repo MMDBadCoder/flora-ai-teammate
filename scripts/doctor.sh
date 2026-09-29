@@ -63,6 +63,7 @@ done < <(external_paths)
 step "4. Binaries"
 [[ -x "$FLORA_STATE/bin/hermes" ]] && ok "hermes wrapper" || bad "missing state/bin/hermes (run: bin/flora render)"
 [[ -x "$FLORA_STATE/bin/opencode" ]] && ok "opencode wrapper" || bad "missing state/bin/opencode"
+verify_hermes_toolchain || bad "Hermes' bundled toolchain cannot run (see above)"
 "$FLORA_STATE/bin/hermes" --version >/dev/null 2>&1 && ok "hermes: $("$FLORA_STATE/bin/hermes" --version 2>&1 | head -1)" \
   || bad "hermes does not run (scripts/install-hermes.sh)"
 "$FLORA_STATE/bin/opencode" --version >/dev/null 2>&1 && ok "opencode: $("$FLORA_STATE/bin/opencode" --version 2>&1 | head -1)" \

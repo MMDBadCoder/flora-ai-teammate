@@ -568,6 +568,56 @@ verify_nginx_references() {
   return 0
 }
 
+# verify_hermes_toolchain -- does the Node that Hermes downloaded actually run?
+#
+# Hermes brings its own Node rather than using the system one, which is what
+# keeps it isolated -- but that binary still needs its shared libraries present.
+# A minimal Debian or Ubuntu has no libatomic1, and Node links against it, so the
+# download succeeds, the checksum verifies, and every later `node --version`
+# exits 127. Hermes reports that as "Building web UI... failed" in a loop, which
+# names neither the library nor the package.
+#
+# Rather than hardcode one library, this runs the binary and reads whichever one
+# the loader says is missing.
+verify_hermes_toolchain() {
+  local node
+  node="$(find "$FLORA_STATE/hermes/tools" -maxdepth 3 -type f -name node -perm -u+x 2>/dev/null | head -1)"
+  [[ -n "$node" ]] || { skip "Hermes has not downloaded its Node yet"; return 0; }
+
+  # `out=$(cmd)` with a failing cmd aborts the shell under `set -e` before the
+  # exit status can be read, so the failure is captured explicitly.
+  local out rc=0
+  out="$("$node" --version 2>&1)" || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    ok "Hermes' bundled Node runs ($out)"
+    return 0
+  fi
+
+  local lib pkg
+  lib="$(grep -oE '[a-zA-Z0-9_.+-]+\.so[0-9.]*' <<< "$out" | head -1)"
+  if [[ -z "$lib" ]]; then
+    err "Hermes' bundled Node will not run:"
+    sed 's/^/       /' <<< "$out"
+    return 1
+  fi
+  case "$lib" in
+    libatomic.so*) pkg="libatomic1" ;;
+    libstdc++.so*) pkg="libstdc++6" ;;
+    libgcc_s.so*)  pkg="libgcc-s1" ;;
+    *)             pkg="" ;;
+  esac
+  err "Hermes' bundled Node cannot start: $lib is missing"
+  log "    Hermes downloads its own Node, and that binary needs this library from"
+  log "    the system. Without it every build step fails with exit 127, which"
+  log "    Hermes reports only as \"Building web UI... failed\"."
+  if [[ -n "$pkg" ]]; then
+    log "    Fix:  sudo apt install -y $pkg"
+  else
+    log "    Find the package with:  apt-file search $lib"
+  fi
+  return 1
+}
+
 # check_dashboard_servable -- why the dashboard answers 403 after a correct login.
 #
 # A 403 here is never about the password: 401 is "wrong or missing credentials",

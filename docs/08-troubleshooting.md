@@ -332,6 +332,39 @@ Two different symptoms, one root cause: how many things are checking credentials
   A 401 there means `OPENCODE_SERVER_PASSWORD` is still reaching it. Check that
   `state/bin/opencode` contains the `unset` block, which is where it is dropped.
 
+## "Building web UI... failed" / `libatomic.so.1: cannot open shared object file`
+
+```
+✗ Web UI build failed: node: staged entry failed verification:
+  .../state/hermes/tools/.staging-*/tree/bin/node: error while loading shared
+  libraries: libatomic.so.1: cannot open shared object file
+```
+
+and `bin/flora hermes pm doctor` shows:
+
+```
+✗ node: not installed
+✗ npm: not installed
+```
+
+Hermes downloads **its own Node** rather than using the system one — that is what
+keeps it isolated from anything else on the machine. The download and checksum
+succeed, but the binary links against `libatomic.so.1`, which a minimal Debian or
+Ubuntu does not install. Every `node --version` then exits 127, so Hermes reports
+a failing web UI build in a loop and its dashboard never comes up. The system
+Node that Flora's preflight checks is a different Node and is unaffected, which
+is why everything else works.
+
+```bash
+sudo apt install -y libatomic1
+bin/flora hermes pm doctor        # node and npm should now be ✓
+bin/flora restart hermes
+```
+
+Preflight now checks for this library up front, and `bin/flora install hermes`
+and `bin/flora doctor` run the bundled Node and name whichever library is
+missing, with the package to install.
+
 ## The Hermes dashboard will not start (but `bin/flora hermes` works)
 
 Those are two different things: the CLI never touches the dashboard's auth gate,
