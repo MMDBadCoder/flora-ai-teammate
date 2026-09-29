@@ -133,6 +133,59 @@ bin/flora render
 `$SUDO_USER` under sudo, so `sudo bin/flora bootstrap` leaves the tree owned by
 you, not root. Mattermost's own mounts stay at uid 2000, which its image requires.
 
+## "Please check connection, Mattermost unreachable" / WebSocket port
+
+The page loads, you can read channels, and a banner says Mattermost is
+unreachable. That is the **websocket** failing, and the cause is almost always
+`SiteURL` not matching the address you actually typed.
+
+Mattermost builds its websocket URL from `SiteURL`. Flora derives that from
+`FLORA_IP`, so browsing by any other name breaks it — reaching
+`http://flora:7083` while `SiteURL` says `http://192.168.220.83:7083` is exactly
+this symptom.
+
+```bash
+bin/flora doctor         # compares the running SiteURL with what Flora advertises
+```
+
+Fix it by advertising the address people type:
+
+```ini
+# flora.env
+FLORA_URL_CHAT_OVERRIDE=http://flora:7083
+```
+
+```bash
+bin/flora render
+bin/flora restart mattermost
+```
+
+Use that override whenever the address people type differs from
+`FLORA_IP:FLORA_PUBLIC_CHAT` — a hostname instead of an IP, or a NAT that
+translates the port. It changes only what is advertised; nginx still listens on
+`FLORA_PUBLIC_CHAT`. Alternatively set `FLORA_IP` to the name everyone uses, if
+every service should be reached that way.
+
+Other causes, if `SiteURL` is already right: something between you and the server
+dropping `Upgrade:` headers (a corporate proxy), or a browser extension blocking
+websockets.
+
+### The CORS error in the console is unrelated
+
+```
+Access to XMLHttpRequest at 'https://pdat.matterlytics.com/v1/track' ...
+blocked by CORS policy
+```
+
+That is Mattermost's **product telemetry**, not your server. It fails because
+this network cannot reach `matterlytics.com`, and it has no effect on anything.
+Flora now ships `MM_LOGSETTINGS_ENABLEDIAGNOSTICS=false`, so it stops being
+attempted at all:
+
+```bash
+bin/flora render && bin/flora restart mattermost
+```
+
 ## The server's address changed
 
 `FLORA_IP` is not only cosmetic: it is baked into Mattermost's `SiteURL` and

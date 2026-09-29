@@ -137,6 +137,29 @@ if ! curl -s -o /dev/null -m4 "http://127.0.0.1:${FLORA_PORT_HERMES}/" 2>/dev/nu
   fi
 fi
 
+# Mattermost builds its websocket URL from SiteURL, so a SiteURL that is not
+# exactly what people type gives "Please check connection, Mattermost
+# unreachable" while every page still loads. Its client config is public, so the
+# running value can be read and compared.
+if [[ "${FLORA_ENABLE_MATTERMOST:-true}" == "true" ]]; then
+  mm_site="$(curl -s -m5 "http://127.0.0.1:${FLORA_PORT_MATTERMOST}/api/v4/config/client?format=old" 2>/dev/null \
+             | python3 -c 'import json,sys
+try: print(json.load(sys.stdin).get("SiteURL",""))
+except Exception: print("")' 2>/dev/null || true)"
+  if [[ -n "$mm_site" ]]; then
+    if [[ "$mm_site" == "$FLORA_URL_CHAT" ]]; then
+      ok "Mattermost SiteURL matches what Flora advertises ($mm_site)"
+    else
+      bad "Mattermost SiteURL is $mm_site but Flora advertises $FLORA_URL_CHAT"
+      log "    Whichever one people actually type must be the SiteURL, or the"
+      log "    websocket fails and the page says \"Mattermost unreachable\"."
+    fi
+    log "    Browsing Mattermost by any other name or address than"
+    log "    $mm_site will break its websocket. Set FLORA_URL_CHAT_OVERRIDE"
+    log "    to the address people type, then: bin/flora render && bin/flora restart mattermost"
+  fi
+fi
+
 step "7. Skills"
 "$FLORA_HOME/scripts/skills-sync.sh" --check || bad "the skill tree has drifted (run: bin/flora skills sync)"
 

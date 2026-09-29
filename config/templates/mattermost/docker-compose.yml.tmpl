@@ -61,6 +61,12 @@ services:
       MM_TEAMSETTINGS_ENABLEOPENSERVER: "false"
       MM_EMAILSETTINGS_SENDEMAILNOTIFICATIONS: "false"
       MM_EMAILSETTINGS_REQUIREEMAILVERIFICATION: "false"
+      # Off for a private team server. This is what contacts
+      # pdat.matterlytics.com, which on a network that cannot reach it shows up
+      # as a CORS error in every browser console -- alarming, and unrelated to
+      # anything that matters. Turn it back on if you want to send Mattermost
+      # product analytics.
+      MM_LOGSETTINGS_ENABLEDIAGNOSTICS: "false"
       MM_LOGSETTINGS_ENABLEFILE: "true"
       MM_LOGSETTINGS_FILELOCATION: /mattermost/logs
     volumes:

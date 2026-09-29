@@ -32,6 +32,12 @@ Change it in `config/templates/hermes/env.tmpl`, then
 `bin/flora render && bin/flora restart gateway`.
 `group_sessions_per_user` keeps two people's context apart in a shared channel.
 
+**"Mattermost unreachable" banner.** Its websocket is built from `SiteURL`, which
+Flora derives from `FLORA_IP`. If people reach it by a different name, set
+`FLORA_URL_CHAT_OVERRIDE` to the address they type. `bin/flora doctor` compares
+the two. See
+[08-troubleshooting.md](08-troubleshooting.md#please-check-connection-mattermost-unreachable--websocket-port).
+
 **She is ignoring me.** In order: is her ID in `MATTERMOST_ALLOWED_USERS`
 (empty means nobody); is the bot in the channel; `bin/flora logs gateway -f`.
 
