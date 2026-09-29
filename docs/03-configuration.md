@@ -40,6 +40,7 @@ half-finished config.
 |---|---|---|
 | `FLORA_ROUTING` | `ports` | Default for every service: `ports` or `hosts` |
 | `FLORA_ROUTE_<SERVICE>` | inherit | Per-service override: `port` or `subdomain`. One of `DASHBOARD`, `HERMES`, `OPENCODE`, `CHAT`, `TOKENS` |
+| `FLORA_CANONICAL_REDIRECT` | `true` | Redirect other addresses to the advertised one, for Mattermost and Hermes, which each work on only one |
 | `FLORA_NGINX` | `docker` | `docker` = Flora runs her own container; `host` = use the machine's nginx |
 | `FLORA_PUBLIC_DASHBOARD` | `7080` | what people type |
 | `FLORA_PUBLIC_HERMES` | `7081` | |

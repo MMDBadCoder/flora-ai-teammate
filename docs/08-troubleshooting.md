@@ -166,6 +166,18 @@ translates the port. It changes only what is advertised; nginx still listens on
 `FLORA_PUBLIC_CHAT`. Alternatively set `FLORA_IP` to the name everyone uses, if
 every service should be reached that way.
 
+### Both addresses work, but only one of them properly
+
+Reaching the same server by IP *and* by name is normal, and Mattermost supports
+only one canonical URL. `FLORA_CANONICAL_REDIRECT=true` (the default) makes the
+other address bounce to it with a 301, preserving path and query, so both work
+and the canonical one always ends up in the address bar. The same applies to
+Hermes, which returns a flat 400 on a Host it does not recognise.
+
+Set `FLORA_CANONICAL_REDIRECT=false` if different people legitimately arrive by
+different names — behind a NAT or a proxy where the advertised address is not
+reachable for everyone.
+
 Other causes, if `SiteURL` is already right: something between you and the server
 dropping `Upgrade:` headers (a corporate proxy), or a browser extension blocking
 websockets.

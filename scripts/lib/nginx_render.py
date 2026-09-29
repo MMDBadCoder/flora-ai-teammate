@@ -65,6 +65,47 @@ def listener(service):
     return "    listen %s;\n    server_name _;" % env("FLORA_PUBLIC_%s" % key)
 
 
+def canonical_host(service):
+    """host[:port] of the URL Flora advertises for this service."""
+    url = env("FLORA_URL_%s" % service.upper())
+    if not url:
+        return ""
+    rest = url.split("://", 1)[-1]
+    return rest.split("/", 1)[0]
+
+
+def canonical_redirect(service):
+    """Send every other address to the one this service considers canonical.
+
+    Mattermost builds its websocket URL from SiteURL, and Hermes validates the
+    Host header against its configured public URL. Both therefore work on
+    exactly one address and misbehave on any other -- Mattermost with a
+    "check connection" banner while every page still loads, Hermes with a flat
+    400. Reaching the same server by IP and by name is completely normal, so
+    without this the second address is quietly broken.
+
+    A redirect makes that visible and self-correcting instead: the other address
+    still works, it just bounces to the canonical one first. `if` plus `return`
+    is one of the uses nginx documents as safe.
+
+    Set FLORA_CANONICAL_REDIRECT=false to serve every address as-is -- wanted
+    when a NAT or proxy means different people legitimately arrive by different
+    names and the advertised one is not reachable for all of them.
+    """
+    if env("FLORA_CANONICAL_REDIRECT", "true") != "true":
+        return ""
+    host = canonical_host(service)
+    url = env("FLORA_URL_%s" % service.upper())
+    if not host or not url:
+        return ""
+    return """
+    # %s only works on one address; anything else lands here and is sent there.
+    if ($http_host != "%s") {
+        return 301 %s$request_uri;
+    }
+""" % (service.capitalize(), host, url)
+
+
 def logs(service, home):
     name = {"chat": "chat", "tokens": "tokens"}.get(service, service)
     return ("    access_log %s/state/logs/nginx-%s.access.log flora;\n"
@@ -114,7 +155,7 @@ server {
 
     client_max_body_size 256m;
     include %s/state/nginx/auth.conf;
-
+%s
     location / {
         proxy_pass http://127.0.0.1:%s;
         proxy_set_header Upgrade $http_upgrade;
@@ -126,6 +167,7 @@ server {
         proxy_send_timeout 3600s;
     }
 }""" % (service.capitalize(), listener(service), logs(service, home), home,
+        canonical_redirect(service) if service == "hermes" else "",
         backend_port, PROXY_COMMON, note)
 
 
@@ -139,7 +181,7 @@ server {
 %s
 
     client_max_body_size 512m;
-
+%s
     # The realtime channel. A WebSocket handshake is an ordinary HTTP request
     # with a Host header, so this is routed by name like everything else.
     location ~ /api/v[0-9]+/(users/)?websocket$ {
@@ -162,7 +204,8 @@ server {
         proxy_read_timeout 600s;
         proxy_buffers 256 16k;
     }
-}""" % (listener("chat"), logs("chat", home), backend_port, PROXY_COMMON, backend_port)
+}""" % (listener("chat"), logs("chat", home), canonical_redirect("chat"),
+        backend_port, PROXY_COMMON, backend_port)
 
 
 def block_scribe(home, backend_port):

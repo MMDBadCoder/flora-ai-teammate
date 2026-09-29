@@ -60,6 +60,7 @@ load_env() {
   # platform with "unbound variable" for anyone who upgrades.
   : "${FLORA_DOMAIN:=flora.local}"
   : "${FLORA_ROUTING:=ports}"
+  : "${FLORA_CANONICAL_REDIRECT:=true}"
   : "${FLORA_NGINX:=docker}"
   : "${FLORA_PUBLIC_DASHBOARD:=7080}"
   : "${FLORA_PUBLIC_HERMES:=7081}"
@@ -108,6 +109,7 @@ load_env() {
   : "${FLORA_ENABLE_HERMES:=true}"
   : "${FLORA_ENABLE_OPENCODE:=true}"
   : "${FLORA_ENABLE_MATTERMOST:=true}"
+  export FLORA_CANONICAL_REDIRECT
   export FLORA_DOMAIN FLORA_ROUTING FLORA_NGINX FLORA_PUBLIC_DASHBOARD \
          FLORA_PUBLIC_HERMES FLORA_PUBLIC_OPENCODE FLORA_PUBLIC_CHAT \
          FLORA_PUBLIC_TOKENS FLORA_HTTP_PORT FLORA_BIND_ADDR FLORA_AUTH_MODE \
