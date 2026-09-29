@@ -50,6 +50,7 @@ flora -- the Flora AI teammate platform
     skills sync          reconcile both agents (also runs every 5 minutes)
     skills lint          validate every skill against both agents' rules
     sync                 full sync: configs, instructions, MCP servers, skills
+    mcp [--probe]        which tool servers are configured; --probe starts each
 
   CARE
     network              why other machines cannot reach Flora, and the fix
@@ -213,6 +214,7 @@ case "$cmd" in
     esac ;;
 
   sync)    load_env; "$S/agents-sync.sh" ;;
+  mcp)     load_env; "$S/mcp-status.sh" "$@" ;;
   update)  load_env; "$S/update.sh" "$@" ;;
   network) load_env; "$S/network.sh" ;;
   doctor)  load_env; "$S/doctor.sh" ;;

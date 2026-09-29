@@ -138,6 +138,36 @@ enough for Flora to read a change and its diff, see what reviewers asked for, an
 post a review — while pushing changes stays with git and the `gerrit-change`
 skill, since that needs a working tree.
 
+### Is it up?
+
+It is never "up" — and that is not a fault. An MCP stdio server is **not a
+service**: the agent starts it as a child process when it needs a tool, talks
+JSON-RPC over stdin and stdout, and it exits. Nothing listens on a port, nothing
+appears in `systemctl`, and `ps` shows it only during a tool call.
+
+```bash
+bin/flora mcp              # what is configured, and what is waiting on what
+bin/flora mcp --probe      # start each one and actually use it
+```
+
+```
+gerrit       ready    in opencode.json
+             ✓ starts and answers -- flora-gerrit, 6 tools;
+               gerrit_list_projects returned: infra/flora
+```
+
+`--probe` does more than start the server. A handshake alone proves nothing
+useful: `initialize` and `tools/list` never reach Gerrit, so they succeed with
+completely wrong credentials. Each server therefore names a read-only
+`probe_tool` in `shared/mcp/servers.json`, and the probe calls it, so the three
+outcomes are distinguishable:
+
+```
+✓ ... gerrit_list_projects returned: infra/flora
+✗ ... gerrit_list_projects failed: Gerrit refused the credentials (HTTP 401) ...
+✗ ... gerrit_list_projects failed: cannot reach http://... Connection refused
+```
+
 It is Flora's own server (`scripts/mcp/gerrit_mcp.py`), standard library only,
 speaking Gerrit's documented REST API — the same API `scripts/integrations/gerrit.sh`
 uses. The npm packages offering this are a 404, an unpublished name, and a single

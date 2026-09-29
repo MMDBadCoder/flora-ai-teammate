@@ -13,7 +13,8 @@
     "\"requires_env\": [...] makes a server CONDITIONAL -- it is configured only",
     "when every listed variable has a non-empty value, so a server whose",
     "credentials are not filled in yet is silently absent instead of being",
-    "offered to the agents and failing on first use."
+    "offered to the agents and failing on first use.",
+    "\"probe_tool\" names a read-only call `bin/flora mcp --probe` makes to prove the server actually works. Without one a probe only proves the process starts, which stays green with wrong credentials -- initialize and tools/list never touch the upstream system. Only name a tool that is safe to call at any time."
   ],
   "servers": {
     "gerrit": {
@@ -32,7 +33,13 @@
         "GERRIT_USER": "${GERRIT_USER}",
         "GERRIT_HTTP_PASSWORD": "${GERRIT_HTTP_PASSWORD}"
       },
-      "note": "Gerrit code review: list and read changes, fetch a diff, read inline comments, post a review. Configured automatically as soon as GERRIT_URL and GERRIT_HTTP_PASSWORD are set in secrets/flora.env -- nothing else to turn on. Speaks Gerrit's documented REST API; see scripts/mcp/gerrit_mcp.py."
+      "note": "Gerrit code review: list and read changes, fetch a diff, read inline comments, post a review. Configured automatically as soon as GERRIT_URL and GERRIT_HTTP_PASSWORD are set in secrets/flora.env -- nothing else to turn on. Speaks Gerrit's documented REST API; see scripts/mcp/gerrit_mcp.py.",
+      "probe_tool": {
+        "name": "gerrit_list_projects",
+        "arguments": {
+          "limit": 1
+        }
+      }
     },
     "atlassian": {
       "enabled": false,
